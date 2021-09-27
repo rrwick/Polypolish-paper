@@ -1,0 +1,1006 @@
+---
+title: "Polishing analysis"
+date: "2021-08-07"
+author: "Ryan Wick"
+output:
+  html_document:
+    pandoc_args: ["+RTS", "-K64m", "-RTS", "--self-contained",]
+    df_print: paged
+    keep_md: false
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+
+# Introduction
+
+This knitr report aims to use real read sets to test the short-read polishers. It is based on the assumption that a closely related group of genomes should become more similar to each other as they are more accurately polished. So I'll polish the genomes using different tools and then quantify their accuracy using the total within-group distance. It's sort of like the Trycycler real read tests, but instead of pairs of identical genomes, it's groups of similar genomes.
+
+
+
+
+# Setup
+
+Load some R packages and set notebook options.
+
+```{r collapse=TRUE}
+library(tidyverse)
+library(knitr)
+library(ggforce)
+library(cowplot)
+library(colorspace)
+library(RColorBrewer)
+library(readxl)
+
+opts_chunk$set(dpi=300, fig.path='plots/', echo=TRUE, dev=c('png','pdf'), warning=FALSE, message=FALSE)
+pdf.options(useDingbats = FALSE)
+```
+
+I stored a few paths (specific to my Nectar instance) in Bash variables for use throughout this analysis.
+```{bash eval=FALSE}
+base_dir=/home/ubuntu/hybrid_polishing/real_read_tests
+script_dir=/home/ubuntu/hybrid_polishing/scripts
+wrapper_dir=/home/ubuntu/hybrid_polishing/polisher_wrappers
+```
+
+
+## Colours
+
+```{r colour_legend, fig.width = 4, fig.height = 6, useDingbats = FALSE, out.width = '200px'}
+# hue_list <- c(0, 0.5, 0.25, 0.75,
+#               0.125, 0.625, 0.375, 0.875,
+#               0.0625, 0.5625, 0.3125, 0.8125, 0.1875, 0.6875, 0.4375, 0.9375,
+#               0.03125, 0.53125, 0.28125, 0.78125, 0.15625, 0.65625, 0.40625, 0.90625, 0.09375, 0.59375, 0.34375, 0.84375, 0.21875, 0.71875, 0.46875, 0.96875)
+# colour_list <- hsv(hue_list, 0.6, 0.9)
+
+# consent = colour_list[1]
+# flye = colour_list[2]
+# hypo = colour_list[3]
+# nextpolish = colour_list[4]
+# marginpolish = colour_list[5]
+# medaka = colour_list[6]
+# ntedit = colour_list[7]
+# pepper = colour_list[8]
+# pilon = colour_list[9]
+# polca = colour_list[10]
+# polypolish = colour_list[11]
+# racon = colour_list[12]
+# wtpoa = colour_list[13]
+
+colour_list <- brewer.pal(n = 8, name = "Set2")
+
+hypo = colour_list[1]
+nextpolish = colour_list[2]
+ntedit = colour_list[3]
+pilon = colour_list[4]
+polca = colour_list[5]
+polypolish = colour_list[6]
+racon = colour_list[7]
+wtpoa = colour_list[8]
+
+c = c("Trycycler" = "#cccccc",
+      
+      "Trycycler+Medaka-long" = "#cccccc",
+      
+      "Trycycler+Medaka-long+HyPo-short" = hypo,
+      "Trycycler+Medaka-long+HyPo-short+HyPo-short" = hypo,
+      "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" = hypo,
+
+      "Trycycler+Medaka-long+NextPolish-short" = nextpolish,
+      "Trycycler+Medaka-long+NextPolish-short+NextPolish-short" = nextpolish,
+      "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short" = nextpolish,
+
+      "Trycycler+Medaka-long+ntEdit-short" = ntedit,
+      "Trycycler+Medaka-long+ntEdit-short+ntEdit-short" = ntedit,
+      "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short" = ntedit,
+      
+      "Trycycler+Medaka-long+Pilon-short" = pilon,
+      "Trycycler+Medaka-long+Pilon-short+Pilon-short" = pilon,
+      "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short" = pilon,
+
+      "Trycycler+Medaka-long+POLCA-short" = polca,
+      "Trycycler+Medaka-long+POLCA-short+POLCA-short" = polca,
+      "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short" = polca,
+      
+      "Trycycler+Medaka-long+Polypolish-short" = polypolish,
+      "Trycycler+Medaka-long+Polypolish-short+Polypolish-short" = polypolish,
+      "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short" = polypolish,
+      
+      "Trycycler+Medaka-long+Racon-short" = racon,
+      "Trycycler+Medaka-long+Racon-short+Racon-short" = racon,
+      "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short" = racon,
+
+      "Trycycler+Medaka-long+wtpoa-short" = wtpoa,
+      "Trycycler+Medaka-long+wtpoa-short+wtpoa-short" = wtpoa,
+      "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+wtpoa-short" = wtpoa,
+      
+      "Trycycler+Medaka-long+Polypolish-short+POLCA-short" = polca
+      )
+
+# Make a colour scale for ggplot2:
+polisher_colours <- scale_colour_manual(values = c)
+```
+
+
+
+# Read prep
+
+Make some directories
+```{bash eval=FALSE}
+cd "$base_dir"
+mkdir Acinetobacter_baumannii_J9
+mkdir Citrobacter_koseri_MINF_9D
+mkdir Enterobacter_kobei_MSB1_1B
+mkdir Haemophilus_M1C132_1
+mkdir Klebsiella_oxytoca_MSB1_2C
+mkdir Klebsiella_variicola_INF345
+
+cd "$base_dir"
+for s in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    mkdir "$s"
+done
+for s in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    cd "$base_dir"/"$s"
+    mkdir a b c d
+    mkdir a/reads b/reads c/reads d/reads
+done
+```
+
+Copy Illumina reads from MASSIVE and split them into separate groups.
+```{bash eval=FALSE}
+cd "$base_dir"
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Acinetobacter_baumannii_J9/plasmids-J9_1.fastq.gz Acinetobacter_baumannii_J9/reads/illumina_ab_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Acinetobacter_baumannii_J9/plasmids-J9_2.fastq.gz Acinetobacter_baumannii_J9/reads/illumina_ab_2.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Acinetobacter_baumannii_J9/J9_S142_L001_R1_001.fastq.gz Acinetobacter_baumannii_J9/reads/illumina_cd_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Acinetobacter_baumannii_J9/J9_S142_L001_R2_001.fastq.gz Acinetobacter_baumannii_J9/reads/illumina_cd_2.fastq.gz
+
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Citrobacter_koseri_MINF_9D/plasmids-MINF-9D_1.fastq.gz Citrobacter_koseri_MINF_9D/reads/illumina_ab_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Citrobacter_koseri_MINF_9D/plasmids-MINF-9D_2.fastq.gz Citrobacter_koseri_MINF_9D/reads/illumina_ab_2.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Citrobacter_koseri_MINF_9D/MINF-9D_S143_L001_R1_001.fastq.gz Citrobacter_koseri_MINF_9D/reads/illumina_cd_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Citrobacter_koseri_MINF_9D/MINF-9D_S143_L001_R2_001.fastq.gz Citrobacter_koseri_MINF_9D/reads/illumina_cd_2.fastq.gz
+
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Enterobacter_kobei_MSB1_1B/plasmids-MSB1-1B_1.fastq.gz Enterobacter_kobei_MSB1_1B/reads/illumina_ab_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Enterobacter_kobei_MSB1_1B/plasmids-MSB1-1B_2.fastq.gz Enterobacter_kobei_MSB1_1B/reads/illumina_ab_2.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Enterobacter_kobei_MSB1_1B/MSB1-1B_S144_L001_R1_001.fastq.gz Enterobacter_kobei_MSB1_1B/reads/illumina_cd_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Enterobacter_kobei_MSB1_1B/MSB1-1B_S144_L001_R2_001.fastq.gz Enterobacter_kobei_MSB1_1B/reads/illumina_cd_2.fastq.gz
+
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Haemophilus_unknown_M1C132_1/plasmids-MIC132-1_1.fastq.gz Haemophilus_M1C132_1/reads/illumina_ab_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Haemophilus_unknown_M1C132_1/plasmids-MIC132-1_2.fastq.gz Haemophilus_M1C132_1/reads/illumina_ab_2.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Haemophilus_unknown_M1C132_1/M1C132-1_S145_L001_R1_001.fastq.gz Haemophilus_M1C132_1/reads/illumina_cd_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Haemophilus_unknown_M1C132_1/M1C132-1_S145_L001_R2_001.fastq.gz Haemophilus_M1C132_1/reads/illumina_cd_2.fastq.gz
+
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Klebsiella_oxytoca_MSB1_2C/plasmids-MSB1-2C_1.fastq.gz Klebsiella_oxytoca_MSB1_2C/reads/illumina_ab_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Klebsiella_oxytoca_MSB1_2C/plasmids-MSB1-2C_2.fastq.gz Klebsiella_oxytoca_MSB1_2C/reads/illumina_ab_2.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Klebsiella_oxytoca_MSB1_2C/MSB1-2C_S146_L001_R1_001.fastq.gz Klebsiella_oxytoca_MSB1_2C/reads/illumina_cd_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Klebsiella_oxytoca_MSB1_2C/MSB1-2C_S146_L001_R2_001.fastq.gz Klebsiella_oxytoca_MSB1_2C/reads/illumina_cd_2.fastq.gz
+
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Klebsiella_variicola_INF345/plasmids-INF345_1.fastq.gz Klebsiella_variicola_INF345/reads/illumina_ab_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_1_illumina_reads/Klebsiella_variicola_INF345/plasmids-INF345_2.fastq.gz Klebsiella_variicola_INF345/reads/illumina_ab_2.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Klebsiella_variicola_INF345/INF345_S147_L001_R1_001.fastq.gz Klebsiella_variicola_INF345/reads/illumina_cd_1.fastq.gz
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/tech_rep_2_illumina_reads/Klebsiella_variicola_INF345/INF345_S147_L001_R2_001.fastq.gz Klebsiella_variicola_INF345/reads/illumina_cd_2.fastq.gz
+
+gunzip */reads/*.fastq.gz
+
+cd "$base_dir"/Acinetobacter_baumannii_J9/reads
+a_count=1557613; b_count=1557613
+seqtk mergepe illumina_ab_1.fastq illumina_ab_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$a_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_a_1.fastq.gz
+head -n "$a_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_a_2.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_b_1.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_b_2.fastq.gz
+c_count=641932; d_count=641931
+seqtk mergepe illumina_cd_1.fastq illumina_cd_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$c_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_c_1.fastq.gz
+head -n "$c_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_c_2.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_d_1.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_d_2.fastq.gz
+rm temp_merged.fastq
+
+cd "$base_dir"/Citrobacter_koseri_MINF_9D/reads
+a_count=1142150; b_count=1142150
+seqtk mergepe illumina_ab_1.fastq illumina_ab_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$a_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_a_1.fastq.gz
+head -n "$a_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_a_2.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_b_1.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_b_2.fastq.gz
+c_count=799294; d_count=799294
+seqtk mergepe illumina_cd_1.fastq illumina_cd_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$c_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_c_1.fastq.gz
+head -n "$c_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_c_2.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_d_1.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_d_2.fastq.gz
+rm temp_merged.fastq
+
+cd "$base_dir"/Enterobacter_kobei_MSB1_1B/reads
+a_count=1023434; b_count=1023433
+seqtk mergepe illumina_ab_1.fastq illumina_ab_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$a_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_a_1.fastq.gz
+head -n "$a_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_a_2.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_b_1.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_b_2.fastq.gz
+c_count=801044; d_count=801044
+seqtk mergepe illumina_cd_1.fastq illumina_cd_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$c_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_c_1.fastq.gz
+head -n "$c_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_c_2.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_d_1.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_d_2.fastq.gz
+rm temp_merged.fastq
+
+cd "$base_dir"/Haemophilus_M1C132_1/reads
+a_count=991749; b_count=991749
+seqtk mergepe illumina_ab_1.fastq illumina_ab_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$a_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_a_1.fastq.gz
+head -n "$a_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_a_2.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_b_1.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_b_2.fastq.gz
+c_count=790461; d_count=790460
+seqtk mergepe illumina_cd_1.fastq illumina_cd_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$c_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_c_1.fastq.gz
+head -n "$c_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_c_2.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_d_1.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_d_2.fastq.gz
+rm temp_merged.fastq
+
+cd "$base_dir"/Klebsiella_oxytoca_MSB1_2C/reads
+a_count=1818842; b_count=1818841
+seqtk mergepe illumina_ab_1.fastq illumina_ab_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$a_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_a_1.fastq.gz
+head -n "$a_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_a_2.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_b_1.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_b_2.fastq.gz
+c_count=733390; d_count=733389
+seqtk mergepe illumina_cd_1.fastq illumina_cd_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$c_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_c_1.fastq.gz
+head -n "$c_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_c_2.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_d_1.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_d_2.fastq.gz
+rm temp_merged.fastq
+
+cd "$base_dir"/Klebsiella_variicola_INF345/reads
+a_count=833289; b_count=833289
+seqtk mergepe illumina_ab_1.fastq illumina_ab_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$a_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_a_1.fastq.gz
+head -n "$a_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_a_2.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_b_1.fastq.gz
+tail -n "$b_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_b_2.fastq.gz
+c_count=829561; d_count=829561
+seqtk mergepe illumina_cd_1.fastq illumina_cd_2.fastq | paste - - - - - - - - | shuf > temp_merged.fastq
+head -n "$c_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_c_1.fastq.gz
+head -n "$c_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_c_2.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 1-4 | tr "\t" "\n" | gzip > illumina_d_1.fastq.gz
+tail -n "$d_count" temp_merged.fastq | cut -f 5-8 | tr "\t" "\n" | gzip > illumina_d_2.fastq.gz
+rm temp_merged.fastq
+
+# Sanity check - make sure split worked as expected.
+for s in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    cd "$base_dir"/"$s"/reads
+    printf "\n"$s
+    printf "\nAB\n"
+    cat illumina_ab_1.fastq | paste - - - - | wc -l
+    zcat illumina_a_1.fastq.gz illumina_b_1.fastq.gz | paste - - - - | wc -l
+    cat illumina_ab_2.fastq | paste - - - - | wc -l
+    zcat illumina_a_2.fastq.gz illumina_b_2.fastq.gz | paste - - - - | wc -l
+    diff <(cat illumina_ab_1.fastq | paste - - - - | cut -f1 -d$'\t' | sort) <(zcat illumina_a_1.fastq.gz illumina_b_1.fastq.gz | paste - - - - | cut -f1 -d$'\t' | sort)
+    printf "\nCD\n"
+    cat illumina_cd_1.fastq | paste - - - - | wc -l
+    zcat illumina_c_1.fastq.gz illumina_d_1.fastq.gz | paste - - - - | wc -l
+    cat illumina_cd_2.fastq | paste - - - - | wc -l
+    zcat illumina_c_2.fastq.gz illumina_d_2.fastq.gz | paste - - - - | wc -l
+    diff <(cat illumina_cd_1.fastq | paste - - - - | cut -f1 -d$'\t' | sort) <(zcat illumina_c_1.fastq.gz illumina_d_1.fastq.gz | paste - - - - | cut -f1 -d$'\t' | sort)
+    printf "\n"
+done
+
+# Clean up before-split read files.
+cd "$base_dir"
+rm */reads/illumina_ab_1.fastq
+rm */reads/illumina_cd_1.fastq
+rm */reads/illumina_ab_2.fastq
+rm */reads/illumina_cd_2.fastq
+```
+
+Illumina read QC.
+```{bash eval=FALSE}
+for s in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    cd "$base_dir"/"$s"/reads
+    for group in a b c d; do
+        fastp --in1 illumina_"$group"_1.fastq.gz --in2 illumina_"$group"_2.fastq.gz --out1 "$base_dir"/"$s"/"$group"/reads/illumina_1.fastq.gz --out2 "$base_dir"/"$s"/"$group"/reads/illumina_2.fastq.gz --unpaired1 "$base_dir"/"$s"/"$group"/reads/illumina_u.fastq.gz --unpaired2 "$base_dir"/"$s"/"$group"/reads/illumina_u.fastq.gz
+        mv fastp.html fastp.json "$base_dir"/"$s"/"$group"/reads
+    done
+done
+
+for s in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    cd "$base_dir"/"$s"/reads
+    mv illumina_a_1.fastq.gz ../a/reads/illumina_raw_1.fastq.gz
+    mv illumina_a_2.fastq.gz ../a/reads/illumina_raw_2.fastq.gz
+    mv illumina_b_1.fastq.gz ../b/reads/illumina_raw_1.fastq.gz
+    mv illumina_b_2.fastq.gz ../b/reads/illumina_raw_2.fastq.gz
+    mv illumina_c_1.fastq.gz ../c/reads/illumina_raw_1.fastq.gz
+    mv illumina_c_2.fastq.gz ../c/reads/illumina_raw_2.fastq.gz
+    mv illumina_d_1.fastq.gz ../d/reads/illumina_raw_1.fastq.gz
+    mv illumina_d_2.fastq.gz ../d/reads/illumina_raw_2.fastq.gz
+    cd "$base_dir"/"$s"
+    rmdir reads
+done
+```
+
+
+Copy Nanopore reads from MASSIVE.
+```{bash eval=FALSE}
+cd "$base_dir"
+
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_ligation/basecalling_2021_guppy_v5.0.7_sup/barcode01.fastq.gz Acinetobacter_baumannii_J9/a/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_rapid/basecalling_2021_guppy_v5.0.7_sup/barcode01.fastq.gz Acinetobacter_baumannii_J9/b/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-10_small_plasmid_ligation_02/basecalling_2021_guppy_v5.0.7_sup/barcode01.fastq.gz Acinetobacter_baumannii_J9/c/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-09_small_plasmid_rapid_02/basecalling_2021_guppy_v5.0.7_sup/barcode01.fastq.gz Acinetobacter_baumannii_J9/d/reads/nanopore.fastq.gz
+
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_ligation/basecalling_2021_guppy_v5.0.7_sup/barcode02.fastq.gz Citrobacter_koseri_MINF_9D/a/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_rapid/basecalling_2021_guppy_v5.0.7_sup/barcode02.fastq.gz Citrobacter_koseri_MINF_9D/b/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-10_small_plasmid_ligation_02/basecalling_2021_guppy_v5.0.7_sup/barcode02.fastq.gz Citrobacter_koseri_MINF_9D/c/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-09_small_plasmid_rapid_02/basecalling_2021_guppy_v5.0.7_sup/barcode02.fastq.gz Citrobacter_koseri_MINF_9D/d/reads/nanopore.fastq.gz
+
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_ligation/basecalling_2021_guppy_v5.0.7_sup/barcode03.fastq.gz Enterobacter_kobei_MSB1_1B/a/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_rapid/basecalling_2021_guppy_v5.0.7_sup/barcode03.fastq.gz Enterobacter_kobei_MSB1_1B/b/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-10_small_plasmid_ligation_02/basecalling_2021_guppy_v5.0.7_sup/barcode03.fastq.gz Enterobacter_kobei_MSB1_1B/c/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-09_small_plasmid_rapid_02/basecalling_2021_guppy_v5.0.7_sup/barcode03.fastq.gz Enterobacter_kobei_MSB1_1B/d/reads/nanopore.fastq.gz
+
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_ligation/basecalling_2021_guppy_v5.0.7_sup/barcode04.fastq.gz Haemophilus_M1C132_1/a/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_rapid/basecalling_2021_guppy_v5.0.7_sup/barcode04.fastq.gz Haemophilus_M1C132_1/b/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-10_small_plasmid_ligation_02/basecalling_2021_guppy_v5.0.7_sup/barcode04.fastq.gz Haemophilus_M1C132_1/c/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-09_small_plasmid_rapid_02/basecalling_2021_guppy_v5.0.7_sup/barcode04.fastq.gz Haemophilus_M1C132_1/d/reads/nanopore.fastq.gz
+
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_ligation/basecalling_2021_guppy_v5.0.7_sup/barcode05.fastq.gz Klebsiella_oxytoca_MSB1_2C/a/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_rapid/basecalling_2021_guppy_v5.0.7_sup/barcode05.fastq.gz Klebsiella_oxytoca_MSB1_2C/b/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-10_small_plasmid_ligation_02/basecalling_2021_guppy_v5.0.7_sup/barcode05.fastq.gz Klebsiella_oxytoca_MSB1_2C/c/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-09_small_plasmid_rapid_02/basecalling_2021_guppy_v5.0.7_sup/barcode05.fastq.gz Klebsiella_oxytoca_MSB1_2C/d/reads/nanopore.fastq.gz
+
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_ligation/basecalling_2021_guppy_v5.0.7_sup/barcode07.fastq.gz Klebsiella_variicola_INF345/a/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-01-16_plasmid_rapid/basecalling_2021_guppy_v5.0.7_sup/barcode07.fastq.gz Klebsiella_variicola_INF345/b/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-10_small_plasmid_ligation_02/basecalling_2021_guppy_v5.0.7_sup/barcode07.fastq.gz Klebsiella_variicola_INF345/c/reads/nanopore.fastq.gz
+scp dtn:/mnt/vault2_holt/vault/instruments/minion/2020-06-09_small_plasmid_rapid_02/basecalling_2021_guppy_v5.0.7_sup/barcode07.fastq.gz Klebsiella_variicola_INF345/d/reads/nanopore.fastq.gz
+
+# There were a couple rapid reads of highly repetitive junk that made Flye hang for days, so I had to track them down and remove them:
+cd "$base_dir"/Haemophilus_M1C132_1/reads
+zcat nanopore_d.fastq.gz | paste - - - - | grep -v -P "5ef0247e-3106-4203-852f-79d78afdbdde|06ae7b30-16ea-4238-8523-ad85a1e47b0f" | tr "\t" "\n" | gzip > nanopore_d_filter.fastq.gz
+mv nanopore_d_filter.fastq.gz nanopore_d.fastq.gz
+```
+
+Get reference genomes for each (from small plasmid paper):
+```{bash eval=FALSE}
+cd "$base_dir"
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/assemblies/Acinetobacter_baumannii_J9.fasta Acinetobacter_baumannii_J9/reference.fasta
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/assemblies/Citrobacter_koseri_MINF_9D.fasta Citrobacter_koseri_MINF_9D/reference.fasta
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/assemblies/Enterobacter_kobei_MSB1_1B.fasta Enterobacter_kobei_MSB1_1B/reference.fasta
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/assemblies/Haemophilus_unknown_M1C132_1.fasta Haemophilus_M1C132_1/reference.fasta
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/assemblies/Klebsiella_oxytoca_MSB1_2C.fasta Klebsiella_oxytoca_MSB1_2C/reference.fasta
+scp dtn:/projects/js66/individuals/ryan/Small_plasmid_Nanopore/assemblies/Klebsiella_variicola_INF345.fasta Klebsiella_variicola_INF345/reference.fasta
+
+for s in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    cd "$base_dir"/"$s"
+    head -n2 reference.fasta > reference_chromosome.fasta
+done
+```
+
+
+# Initial long-read assembly
+
+Filtlong.
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    filtlong --min_length 1000 --keep_percent 95 reads/nanopore.fastq.gz > reads.fastq
+done
+
+# Might need a little bit more filtering for Haemophilus_M1C132_1/a, which had shorter reads than the rest.
+```
+
+Trycycler subsampling (needed to tweak `--min_read_depth` for a few read sets with low depth).
+```{bash eval=FALSE}
+cd "$base_dir"/Acinetobacter_baumannii_J9/a
+trycycler subsample --genome_size 3949783 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Acinetobacter_baumannii_J9/b
+trycycler subsample --genome_size 3949783 --reads reads.fastq --out_dir read_subsets --min_read_depth 15
+cd "$base_dir"/Acinetobacter_baumannii_J9/c
+trycycler subsample --genome_size 3949783 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Acinetobacter_baumannii_J9/d
+trycycler subsample --genome_size 3949783 --reads reads.fastq --out_dir read_subsets
+
+cd "$base_dir"/Citrobacter_koseri_MINF_9D/a
+trycycler subsample --genome_size 4833164 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Citrobacter_koseri_MINF_9D/b
+trycycler subsample --genome_size 4833164 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Citrobacter_koseri_MINF_9D/c
+trycycler subsample --genome_size 4833164 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Citrobacter_koseri_MINF_9D/d
+trycycler subsample --genome_size 4833164 --reads reads.fastq --out_dir read_subsets
+
+cd "$base_dir"/Enterobacter_kobei_MSB1_1B/a
+trycycler subsample --genome_size 5093568 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Enterobacter_kobei_MSB1_1B/b
+trycycler subsample --genome_size 5093568 --reads reads.fastq --out_dir read_subsets --min_read_depth 15
+cd "$base_dir"/Enterobacter_kobei_MSB1_1B/c
+trycycler subsample --genome_size 5093568 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Enterobacter_kobei_MSB1_1B/d
+trycycler subsample --genome_size 5093568 --reads reads.fastq --out_dir read_subsets
+
+cd "$base_dir"/Haemophilus_M1C132_1/a
+trycycler subsample --genome_size 2125041 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Haemophilus_M1C132_1/b
+trycycler subsample --genome_size 2125041 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Haemophilus_M1C132_1/c
+trycycler subsample --genome_size 2125041 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Haemophilus_M1C132_1/d
+trycycler subsample --genome_size 2125041 --reads reads.fastq --out_dir read_subsets
+
+cd "$base_dir"/Klebsiella_oxytoca_MSB1_2C/a
+trycycler subsample --genome_size 5995635 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Klebsiella_oxytoca_MSB1_2C/b
+trycycler subsample --genome_size 5995635 --reads reads.fastq --out_dir read_subsets --min_read_depth 10
+cd "$base_dir"/Klebsiella_oxytoca_MSB1_2C/c
+trycycler subsample --genome_size 5995635 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Klebsiella_oxytoca_MSB1_2C/d
+trycycler subsample --genome_size 5995635 --reads reads.fastq --out_dir read_subsets
+
+cd "$base_dir"/Klebsiella_variicola_INF345/a
+trycycler subsample --genome_size 5952932 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Klebsiella_variicola_INF345/b
+trycycler subsample --genome_size 5952932 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Klebsiella_variicola_INF345/c
+trycycler subsample --genome_size 5952932 --reads reads.fastq --out_dir read_subsets
+cd "$base_dir"/Klebsiella_variicola_INF345/d
+trycycler subsample --genome_size 5952932 --reads reads.fastq --out_dir read_subsets
+```
+
+Assemblies for Trycycler:
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    mkdir assemblies
+    flye --nano-hq read_subsets/sample_01.fastq --threads 32 --out-dir assembly_01 && cp assembly_01/assembly.fasta assemblies/assembly_01.fasta && rm -r assembly_01
+    miniasm_and_minipolish.sh read_subsets/sample_02.fastq 32 > assembly_02.gfa && any2fasta assembly_02.gfa > assemblies/assembly_02.fasta && rm assembly_02.gfa
+    raven --threads 32 read_subsets/sample_03.fastq > assemblies/assembly_03.fasta && rm raven.cereal
+    flye --nano-hq read_subsets/sample_04.fastq --threads 32 --out-dir assembly_04 && cp assembly_04/assembly.fasta assemblies/assembly_04.fasta && rm -r assembly_04
+    miniasm_and_minipolish.sh read_subsets/sample_05.fastq 32 > assembly_05.gfa && any2fasta assembly_05.gfa > assemblies/assembly_05.fasta && rm assembly_05.gfa
+    raven --threads 32 read_subsets/sample_06.fastq > assemblies/assembly_06.fasta && rm raven.cereal
+    flye --nano-hq read_subsets/sample_07.fastq --threads 32 --out-dir assembly_07 && cp assembly_07/assembly.fasta assemblies/assembly_07.fasta && rm -r assembly_07
+    miniasm_and_minipolish.sh read_subsets/sample_08.fastq 32 > assembly_08.gfa && any2fasta assembly_08.gfa > assemblies/assembly_08.fasta && rm assembly_08.gfa
+    raven --threads 32 read_subsets/sample_09.fastq > assemblies/assembly_09.fasta && rm raven.cereal
+    flye --nano-hq read_subsets/sample_10.fastq --threads 32 --out-dir assembly_10 && cp assembly_10/assembly.fasta assemblies/assembly_10.fasta && rm -r assembly_10
+    miniasm_and_minipolish.sh read_subsets/sample_11.fastq 32 > assembly_11.gfa && any2fasta assembly_11.gfa > assemblies/assembly_11.fasta && rm assembly_11.gfa
+    raven --threads 32 read_subsets/sample_12.fastq > assemblies/assembly_12.fasta && rm raven.cereal
+done
+```
+
+Trycycler cluster:
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    trycycler cluster --threads 32 --assemblies assemblies/*.fasta --reads reads.fastq --out_dir trycycler 2> trycycler_cluster.out
+done
+```
+
+For each isolate:
+```{bash eval=FALSE}
+cd "$base_dir"/"$i"
+# Check clusters
+trycycler reconcile --max_indel_size 1000 --threads 32 --reads reads.fastq --cluster_dir trycycler/cluster_001  # For each good cluster
+
+for c in trycycler/cluster_*; do trycycler msa --cluster_dir "$c" --threads 32; done
+trycycler partition --reads reads.fastq --cluster_dirs trycycler/cluster_* --threads 32
+for c in trycycler/cluster_*; do trycycler consensus --cluster_dir "$c" --threads 32; done
+
+for c in trycycler/cluster_*; do
+    medaka_consensus -i "$c"/4_reads.fastq -d "$c"/7_final_consensus.fasta -o "$c"/medaka -m r941_min_sup_g507 -t 12
+    mv "$c"/medaka/consensus.fasta "$c"/8_medaka.fasta
+    rm -r "$c"/medaka "$c"/*.fai "$c"/*.mmi  # clean up
+done
+
+cat trycycler/cluster_*/7_final_consensus.fasta > trycycler.fasta
+cat trycycler/cluster_*/8_medaka.fasta > trycycler__medaka-long.fasta
+
+mv trycycler_cluster.out trycycler
+mv assemblies trycycler
+
+rm -r reads.fastq read_subsets
+rm trycycler/cluster_*/4_reads.fastq
+```
+
+
+
+
+
+# Short-read polishing
+
+Before beginning, I had to fix up the Illumina read names to ensure that they ended in '/1' or '/2'. This is mainly for Racon polishing where the reads are merged and we need to prevent duplicate read names in the merged file.
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"/reads
+    echo "$i"
+    cp illumina_1.fastq.gz illumina_1.fastq.gz.backup
+    cp illumina_2.fastq.gz illumina_2.fastq.gz.backup
+    gunzip illumina_1.fastq.gz illumina_2.fastq.gz
+    sed -i 's| 1:N:0:|/1 1:N:0:|' illumina_1.fastq
+    sed -i 's| 2:N:0:|/2 2:N:0:|' illumina_2.fastq
+    gzip illumina_1.fastq &
+    gzip illumina_2.fastq &
+done
+```
+
+
+
+
+## Single-tool
+
+### HyPo v1.0.3
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/hypo-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__hypo-short
+    "$wrapper_dir"/hypo-short.sh trycycler__medaka-long__hypo-short.fasta "$r1" "$r2" trycycler__medaka-long__hypo-short__hypo-short
+    "$wrapper_dir"/hypo-short.sh trycycler__medaka-long__hypo-short__hypo-short.fasta "$r1" "$r2" trycycler__medaka-long__hypo-short__hypo-short__hypo-short
+done
+```
+
+
+### NextPolish v1.3.1
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/nextpolish-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__nextpolish-short
+    "$wrapper_dir"/nextpolish-short.sh trycycler__medaka-long__nextpolish-short.fasta "$r1" "$r2" trycycler__medaka-long__nextpolish-short__nextpolish-short
+    "$wrapper_dir"/nextpolish-short.sh trycycler__medaka-long__nextpolish-short__nextpolish-short.fasta "$r1" "$r2" trycycler__medaka-long__nextpolish-short__nextpolish-short__nextpolish-short
+done
+```
+
+
+### ntEdit v1.3.5
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/ntedit-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__ntedit-short
+    "$wrapper_dir"/ntedit-short.sh trycycler__medaka-long__ntedit-short.fasta "$r1" "$r2" trycycler__medaka-long__ntedit-short__ntedit-short
+    "$wrapper_dir"/ntedit-short.sh trycycler__medaka-long__ntedit-short__ntedit-short.fasta "$r1" "$r2" trycycler__medaka-long__ntedit-short__ntedit-short__ntedit-short
+done
+```
+
+
+
+### Pilon v1.24
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/pilon-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__pilon-short
+    "$wrapper_dir"/pilon-short.sh trycycler__medaka-long__pilon-short.fasta "$r1" "$r2" trycycler__medaka-long__pilon-short__pilon-short
+    "$wrapper_dir"/pilon-short.sh trycycler__medaka-long__pilon-short__pilon-short.fasta "$r1" "$r2" trycycler__medaka-long__pilon-short__pilon-short__pilon-short
+done
+```
+
+
+
+### POLCA v4.0.3
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/polca-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__polca-short
+    "$wrapper_dir"/polca-short.sh trycycler__medaka-long__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polca-short__polca-short
+    "$wrapper_dir"/polca-short.sh trycycler__medaka-long__polca-short__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polca-short__polca-short__polca-short
+done
+```
+
+
+
+### Polypolish v0.4.3
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/polypolish-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short
+    "$wrapper_dir"/polypolish-short.sh trycycler__medaka-long__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polypolish-short
+    "$wrapper_dir"/polypolish-short.sh trycycler__medaka-long__polypolish-short__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polypolish-short__polypolish-short
+done
+```
+
+
+
+### Racon v1.4.21
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/racon-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__racon-short
+    "$wrapper_dir"/racon-short.sh trycycler__medaka-long__racon-short.fasta "$r1" "$r2" trycycler__medaka-long__racon-short__racon-short
+    "$wrapper_dir"/racon-short.sh trycycler__medaka-long__racon-short__racon-short.fasta "$r1" "$r2" trycycler__medaka-long__racon-short__racon-short__racon-short
+done
+```
+
+
+
+### wtpoa-cns v2.5
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/wtpoa-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__wtpoa-short
+    "$wrapper_dir"/wtpoa-short.sh trycycler__medaka-long__wtpoa-short.fasta "$r1" "$r2" trycycler__medaka-long__wtpoa-short__wtpoa-short
+    "$wrapper_dir"/wtpoa-short.sh trycycler__medaka-long__wtpoa-short__wtpoa-short.fasta "$r1" "$r2" trycycler__medaka-long__wtpoa-short__wtpoa-short__wtpoa-short
+done
+```
+
+
+
+### Gather results
+
+Get the pairwise distances for each set:
+```{bash eval=FALSE}
+for p in trycycler trycycler__medaka-long trycycler__medaka-long__hypo-short trycycler__medaka-long__hypo-short__hypo-short trycycler__medaka-long__hypo-short__hypo-short__hypo-short trycycler__medaka-long__nextpolish-short trycycler__medaka-long__nextpolish-short__nextpolish-short trycycler__medaka-long__nextpolish-short__nextpolish-short__nextpolish-short trycycler__medaka-long__ntedit-short trycycler__medaka-long__ntedit-short__ntedit-short trycycler__medaka-long__ntedit-short__ntedit-short__ntedit-short trycycler__medaka-long__pilon-short trycycler__medaka-long__pilon-short__pilon-short trycycler__medaka-long__pilon-short__pilon-short__pilon-short trycycler__medaka-long__polca-short trycycler__medaka-long__polca-short__polca-short trycycler__medaka-long__polca-short__polca-short__polca-short trycycler__medaka-long__polypolish-short trycycler__medaka-long__polypolish-short__polypolish-short trycycler__medaka-long__polypolish-short__polypolish-short__polypolish-short trycycler__medaka-long__racon-short trycycler__medaka-long__racon-short__racon-short trycycler__medaka-long__racon-short__racon-short__racon-short trycycler__medaka-long__wtpoa-short trycycler__medaka-long__wtpoa-short__wtpoa-short trycycler__medaka-long__wtpoa-short__wtpoa-short__wtpoa-short; do
+    for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+        cd "$base_dir"/"$i"
+        printf $i"\t"$p"\t"
+        "$script_dir"/pairwise_distances.py a/"$p".fasta b/"$p".fasta c/"$p".fasta d/"$p".fasta > "$p".phylip
+    done
+done
+```
+
+
+
+
+### Plot results
+
+```{r short_read_single_tool_first_round, fig.width = 10.5, fig.height = 5, useDingbats = FALSE}
+results <- read_excel("results.xlsx", sheet = "Results", col_names = TRUE)
+
+filter(results, polishing == "Trycycler" |
+                polishing == "Trycycler+Medaka-long" |
+                polishing == "Trycycler+Medaka-long+HyPo-short" |
+                polishing == "Trycycler+Medaka-long+NextPolish-shortt" |
+                polishing == "Trycycler+Medaka-long+ntEdit-short" |
+                polishing == "Trycycler+Medaka-long+Pilon-short" |
+                polishing == "Trycycler+Medaka-long+POLCA-short" |
+                polishing == "Trycycler+Medaka-long+Polypolish-short" |
+                polishing == "Trycycler+Medaka-long+Racon-short" |
+                polishing == "Trycycler+Medaka-long+wtpoa-short") -> results
+results$polishing <- factor(results$polishing,
+                            levels = c("Trycycler",
+                                       "Trycycler+Medaka-long",
+                                       "Trycycler+Medaka-long+HyPo-short",
+                                       "Trycycler+Medaka-long+NextPolish-short",
+                                       "Trycycler+Medaka-long+ntEdit-short",
+                                       "Trycycler+Medaka-long+Pilon-short",
+                                       "Trycycler+Medaka-long+POLCA-short",
+                                       "Trycycler+Medaka-long+Polypolish-short",
+                                       "Trycycler+Medaka-long+Racon-short",
+                                       "Trycycler+Medaka-long+wtpoa-short"))
+display_names <- c("Trycycler",
+                   "Trycycler+Medaka",
+                   "Trycycler+Medaka+HyPo",
+                   "Trycycler+Medaka+NextPolish",
+                   "Trycycler+Medaka+ntEdit",
+                   "Trycycler+Medaka+Pilon",
+                   "Trycycler+Medaka+POLCA",
+                   "Trycycler+Medaka+Polypolish",
+                   "Trycycler+Medaka+Racon",
+                   "Trycycler+Medaka+wtpoa")
+display_names <- gsub("\\+", "+\n", display_names)
+
+set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
+                                            "Citrobacter_koseri_MINF_9D" = 1,
+                                            "Enterobacter_kobei_MSB1_1B" = 2,
+                                            "Haemophilus_M1C132_1" = 3,
+                                            "Klebsiella_oxytoca_MSB1_2C" = 4,
+                                            "Klebsiella_variicola_INF345" = 5))
+
+ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set)) +
+  geom_point(size=2.5, stroke=2.5) +
+  polisher_colours + set_shapes + guides(colour = "none") +
+  theme_bw() + theme(plot.background = element_blank()) +
+  scale_x_discrete(labels = display_names) +
+  scale_y_continuous(trans=scales::pseudo_log_trans(),
+                     breaks = c(0, 10, 100, 1000, 10000, 100000, 1000000), minor_breaks = NULL,
+                     labels = c("0", "10", "100", "1000", "10000", "100000", "1000000")) +
+  coord_cartesian(ylim = c(0, 1000000)) +
+  labs(title = "Real read single-tool polishing (sum of pairwise distances)", x = NULL, y = "Errors")
+```
+
+```{r short_read_single_tool_third_round, fig.width = 7.5, fig.height = 3, useDingbats = FALSE}
+results <- read_excel("results.xlsx", sheet = "Results", col_names = TRUE)
+
+filter(results, polishing == "Trycycler+Medaka-long" |
+                polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
+                polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short" |
+                polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short" |
+                polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short" |
+                polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short" |
+                polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short" |
+                polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short") -> results
+results$polishing <- factor(results$polishing,
+                            levels = c("Trycycler+Medaka-long",
+                                       "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short",
+                                       "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short",
+                                       "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short",
+                                       "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short",
+                                       "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short",
+                                       "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short",
+                                       "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short"))
+display_names <- c("unpolished",
+                   "HyPo\n×3",
+                   "NextPolish\n×3",
+                   "ntEdit\n×3",
+                   "Pilon\n×3",
+                   "POLCA\n×3",
+                   "Polypolish\n×3",
+                   "Racon\n×3")
+display_names <- gsub("\\+", "+\n", display_names)
+
+set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
+                                            "Citrobacter_koseri_MINF_9D" = 1,
+                                            "Enterobacter_kobei_MSB1_1B" = 2,
+                                            "Haemophilus_M1C132_1" = 3,
+                                            "Klebsiella_oxytoca_MSB1_2C" = 4,
+                                            "Klebsiella_variicola_INF345" = 5))
+
+ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set)) +
+  geom_point(size=2.5, stroke=2.5) +
+  polisher_colours + set_shapes + guides(colour = "none") +
+  theme_bw() + theme(plot.background = element_blank()) +
+  scale_x_discrete(labels = display_names) +
+  scale_y_continuous(trans=scales::pseudo_log_trans(),
+                     breaks = c(0, 10, 100, 1000, 10000, 100000, 1000000), minor_breaks = NULL,
+                     labels = c("0", "10", "100", "1000", "10000", "100000", "1000000")) +
+  coord_cartesian(ylim = c(0, 15000)) +
+  labs(title = "Single-tool short-read polishing", x = NULL, y = "Sum of pairwise distances")
+```
+
+```{r short_read_single_tool_all_rounds, fig.width = 19, fig.height = 5, useDingbats = FALSE}
+results <- read_excel("results.xlsx", sheet = "Results", col_names = TRUE)
+
+filter(results, polishing == "Trycycler+Medaka-long" |
+                polishing == "Trycycler+Medaka-long+HyPo-short" | polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short" | polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
+                polishing == "Trycycler+Medaka-long+NextPolish-short" | polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short" | polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short" |
+                polishing == "Trycycler+Medaka-long+ntEdit-short" | polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short" | polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short" |
+                polishing == "Trycycler+Medaka-long+Pilon-short" | polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short" | polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short" |
+                polishing == "Trycycler+Medaka-long+POLCA-short" | polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short" | polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short" |
+                polishing == "Trycycler+Medaka-long+Polypolish-short" | polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short" | polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short" |
+                polishing == "Trycycler+Medaka-long+Racon-short" | polishing == "Trycycler+Medaka-long+Racon-short+Racon-short" | polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short" |
+                polishing == "Trycycler+Medaka-long+wtpoa-short" | polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short" | polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+wtpoa-short") -> results
+results$polishing <- factor(results$polishing,
+                            levels = c("Trycycler+Medaka-long",
+                                       "Trycycler+Medaka-long+HyPo-short", "Trycycler+Medaka-long+HyPo-short+HyPo-short", "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short",
+                                       "Trycycler+Medaka-long+NextPolish-short", "Trycycler+Medaka-long+NextPolish-short+NextPolish-short", "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short",
+                                       "Trycycler+Medaka-long+ntEdit-short", "Trycycler+Medaka-long+ntEdit-short+ntEdit-short", "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short",
+                                       "Trycycler+Medaka-long+Pilon-short", "Trycycler+Medaka-long+Pilon-short+Pilon-short", "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short",
+                                       "Trycycler+Medaka-long+POLCA-short", "Trycycler+Medaka-long+POLCA-short+POLCA-short", "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short",
+                                       "Trycycler+Medaka-long+Polypolish-short", "Trycycler+Medaka-long+Polypolish-short+Polypolish-short", "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short",
+                                       "Trycycler+Medaka-long+Racon-short", "Trycycler+Medaka-long+Racon-short+Racon-short", "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short",
+                                       "Trycycler+Medaka-long+wtpoa-short", "Trycycler+Medaka-long+wtpoa-short+wtpoa-short", "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+wtpoa-short"))
+display_names <- c("unpolished",
+                   "HyPo", "HyPo\n×2", "HyPo\n×3",
+                   "NextPolish", "NextPolish\n×2", "NextPolish\n×3",
+                   "ntEdit", "ntEdit\n×2", "ntEdit\n×3",
+                   "Pilon", "Pilon\n×2", "Pilon\n×3",
+                   "POLCA", "POLCA\n×2", "POLCA\n×3",
+                   "Polypolish", "Polypolish\n×2", "Polypolish\n×3",
+                   "Racon", "Racon\n×2", "Racon\n×3",
+                   "wtpoa", "wtpoa\n×2", "wtpoa\n×3")
+display_names <- gsub("\\+", "+\n", display_names)
+
+set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
+                                            "Citrobacter_koseri_MINF_9D" = 1,
+                                            "Enterobacter_kobei_MSB1_1B" = 2,
+                                            "Haemophilus_M1C132_1" = 3,
+                                            "Klebsiella_oxytoca_MSB1_2C" = 4,
+                                            "Klebsiella_variicola_INF345" = 5))
+
+ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set)) +
+  geom_point(size=2.5, stroke=2.5) +
+  polisher_colours + set_shapes + guides(colour = "none") +
+  theme_bw() + theme(plot.background = element_blank()) +
+  scale_x_discrete(labels = display_names) +
+  scale_y_continuous(trans=scales::pseudo_log_trans(),
+                     breaks = c(0, 10, 100, 1000, 10000, 100000, 1000000), minor_breaks = NULL,
+                     labels = c("0", "10", "100", "1000", "10000", "100000", "1000000")) +
+  coord_cartesian(ylim = c(0, 1000000)) +
+  labs(title = "Single-tool short-read polishing", x = NULL, y = "Sum of pairwise distances")
+```
+
+```{r}
+sum(filter(results, polishing == "Trycycler+Medaka-long")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+HyPo-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+NextPolish-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+ntEdit-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Pilon-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+POLCA-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Polypolish-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Racon-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Racon-short+Racon-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+wtpoa-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short")$total_distance)
+sum(filter(results, polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+wtpoa-short")$total_distance)
+```
+
+
+
+## Greedy combination
+
+## Round one
+
+Already done - Polypolish was the winner.
+
+
+## Round two
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/hypo-short.sh trycycler__medaka-long__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__hypo-short
+done
+conda deactivate; conda deactivate
+
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/nextpolish-short.sh trycycler__medaka-long__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__nextpolish-short
+    "$wrapper_dir"/ntedit-short.sh trycycler__medaka-long__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__ntedit-short
+    "$wrapper_dir"/pilon-short.sh trycycler__medaka-long__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__pilon-short
+    "$wrapper_dir"/polca-short.sh trycycler__medaka-long__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polca-short
+    # "$wrapper_dir"/polypolish-short.sh trycycler__medaka-long__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polypolish-short
+    "$wrapper_dir"/racon-short.sh trycycler__medaka-long__polypolish-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__racon-short
+done
+
+for p in trycycler__medaka-long__polypolish-short__hypo-short trycycler__medaka-long__polypolish-short__nextpolish-short trycycler__medaka-long__polypolish-short__ntedit-short trycycler__medaka-long__polypolish-short__pilon-short trycycler__medaka-long__polypolish-short__polca-short trycycler__medaka-long__polypolish-short__polypolish-short trycycler__medaka-long__polypolish-short__racon-short; do
+    for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+        cd "$base_dir"/"$i"
+        printf $i"\t"$p"\t"
+        "$script_dir"/pairwise_distances.py a/"$p".fasta b/"$p".fasta c/"$p".fasta d/"$p".fasta > "$p".phylip
+    done
+done
+```
+
+POLCA is the winner.
+
+
+## Round three
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/hypo-short.sh trycycler__medaka-long__polypolish-short__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polca-short__hypo-short
+done
+conda deactivate; conda deactivate
+
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/nextpolish-short.sh trycycler__medaka-long__polypolish-short__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polca-short__nextpolish-short
+    "$wrapper_dir"/ntedit-short.sh trycycler__medaka-long__polypolish-short__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polca-short__ntedit-short
+    "$wrapper_dir"/pilon-short.sh trycycler__medaka-long__polypolish-short__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polca-short__pilon-short
+    "$wrapper_dir"/polca-short.sh trycycler__medaka-long__polypolish-short__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polca-short__polca-short
+    "$wrapper_dir"/polypolish-short.sh trycycler__medaka-long__polypolish-short__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polca-short__polypolish-short
+    "$wrapper_dir"/racon-short.sh trycycler__medaka-long__polypolish-short__polca-short.fasta "$r1" "$r2" trycycler__medaka-long__polypolish-short__polca-short__racon-short
+done
+
+for p in trycycler__medaka-long__polypolish-short__polca-short__hypo-short trycycler__medaka-long__polypolish-short__polca-short__nextpolish-short trycycler__medaka-long__polypolish-short__polca-short__ntedit-short trycycler__medaka-long__polypolish-short__polca-short__pilon-short trycycler__medaka-long__polypolish-short__polca-short__polca-short trycycler__medaka-long__polypolish-short__polca-short__polypolish-short trycycler__medaka-long__polypolish-short__polca-short__racon-short; do
+    for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+        cd "$base_dir"/"$i"
+        printf $i"\t"$p"\t"
+        "$script_dir"/pairwise_distances.py a/"$p".fasta b/"$p".fasta c/"$p".fasta d/"$p".fasta > "$p".phylip
+    done
+done
+```
+
+No improvement, so we're done.
+
+
+
+## Plot results
+
+```{r greedy, fig.width = 6, fig.height = 3, useDingbats = FALSE}
+results <- read_excel("results.xlsx", sheet = "Results", col_names = TRUE)
+
+filter(results, polishing == "Trycycler+Medaka-long" |
+                polishing == "Trycycler+Medaka-long+Polypolish-short" |
+                polishing == "Trycycler+Medaka-long+Polypolish-short+POLCA-short") -> results
+results$polishing <- factor(results$polishing,
+                            levels = c("Trycycler+Medaka-long",
+                                       "Trycycler+Medaka-long+Polypolish-short",
+                                       "Trycycler+Medaka-long+Polypolish-short+POLCA-short"))
+display_names <- c("unpolished",
+                   "Polypolish",
+                   "Polypolish+POLCA")
+display_names <- gsub("\\+", "+\n", display_names)
+
+set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
+                                            "Citrobacter_koseri_MINF_9D" = 1,
+                                            "Enterobacter_kobei_MSB1_1B" = 2,
+                                            "Haemophilus_M1C132_1" = 3,
+                                            "Klebsiella_oxytoca_MSB1_2C" = 4,
+                                            "Klebsiella_variicola_INF345" = 5))
+
+ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set)) +
+  geom_point(size=3, stroke=2.5) +
+  polisher_colours + set_shapes + guides(colour = "none") +
+  theme_bw() + theme(plot.background = element_blank()) +
+  scale_x_discrete(labels = display_names) +
+  scale_y_continuous(trans=scales::pseudo_log_trans(),
+                     breaks = c(0, 10, 100, 1000, 10000, 100000, 1000000), minor_breaks = NULL,
+                     labels = c("0", "10", "100", "1000", "10000", "100000", "1000000")) +
+  coord_cartesian(ylim = c(0, 15000)) +
+  labs(title = "Real read greedy polishing (sum of pairwise distances)", x = NULL, y = "Errors")
+```
