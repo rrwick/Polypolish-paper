@@ -33,7 +33,7 @@ library(colorspace)
 library(RColorBrewer)
 library(readxl)
 
-opts_chunk$set(dpi=300, fig.path='plots/', echo=TRUE, dev=c('png','pdf'), warning=FALSE, message=FALSE)
+opts_chunk$set(dpi=300, fig.path='../plots/', echo=TRUE, dev=c('png','pdf'), warning=FALSE, message=FALSE)
 pdf.options(useDingbats = FALSE)
 ```
 
@@ -682,7 +682,7 @@ done
 ### Plot results
 
 ```{r short_read_single_tool_first_round, fig.width = 10.5, fig.height = 5, useDingbats = FALSE}
-results <- read_excel("results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, polishing == "Trycycler" |
                 polishing == "Trycycler+Medaka-long" |
@@ -737,7 +737,7 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set))
 ```
 
 ```{r short_read_single_tool_third_round, fig.width = 7.5, fig.height = 3, useDingbats = FALSE}
-results <- read_excel("results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, polishing == "Trycycler+Medaka-long" |
                 polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
@@ -786,7 +786,7 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set))
 ```
 
 ```{r short_read_single_tool_all_rounds, fig.width = 19, fig.height = 5, useDingbats = FALSE}
-results <- read_excel("results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, polishing == "Trycycler+Medaka-long" |
                 polishing == "Trycycler+Medaka-long+HyPo-short" | polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short" | polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
@@ -972,7 +972,7 @@ No improvement, so we're done.
 ## Plot results
 
 ```{r greedy, fig.width = 6, fig.height = 3, useDingbats = FALSE}
-results <- read_excel("results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, polishing == "Trycycler+Medaka-long" |
                 polishing == "Trycycler+Medaka-long+Polypolish-short" |
