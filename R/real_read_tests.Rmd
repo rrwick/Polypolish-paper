@@ -505,6 +505,16 @@ rm -r reads.fastq read_subsets
 rm trycycler/cluster_*/4_reads.fastq
 ```
 
+I also did a short-read assembly with Unicycler using all Illumina reads. This wasn't really used in the analysis, but I enjoy having a short-read graph to use when manually investigating things, e.g. for identifying repeat regions:
+```{bash eval=FALSE}
+for s in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    cd "$base_dir"/"$s"
+    cat a/reads/illumina_1.fastq.gz b/reads/illumina_1.fastq.gz c/reads/illumina_1.fastq.gz d/reads/illumina_1.fastq.gz > temp_illumina_1.fastq.gz
+    cat a/reads/illumina_2.fastq.gz b/reads/illumina_2.fastq.gz c/reads/illumina_2.fastq.gz d/reads/illumina_2.fastq.gz > temp_illumina_2.fastq.gz
+    unicycler -1 temp_illumina_1.fastq.gz -2 temp_illumina_2.fastq.gz -o unicycler --threads 32 --no_pilon --no_rotate --no_correct
+    rm temp_illumina_1.fastq.gz temp_illumina_2.fastq.gz
+done
+```
 
 
 
@@ -1003,4 +1013,22 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set))
                      labels = c("0", "10", "100", "1000", "10000", "100000", "1000000")) +
   coord_cartesian(ylim = c(0, 15000)) +
   labs(title = "Real read greedy polishing (sum of pairwise distances)", x = NULL, y = "Errors")
+```
+
+
+
+
+## Detailed analysis
+
+For some results, I wanted to manually look at the differences. E.g. when Pilon made the _Klebsiella_ distance increase, where in the genome was that happening?
+
+To assist in this, I used Trycycler to produce a MSA of the alternative assemblies:
+```{bash eval=FALSE}
+t=trycycler__medaka-long__pilon-short__pilon-short__pilon-short
+mkdir "$t"
+for x in a b c d; do cp "$x"/"$t".fasta "$t"/"$x".fasta; done
+# manually combine into a 2_all_seqs.fasta file of chromosome sequences
+trycycler msa --cluster_dir "$t" --threads 32
+mv "$t"/3_msa.fasta "$t".msa
+rm -r "$t"
 ```
