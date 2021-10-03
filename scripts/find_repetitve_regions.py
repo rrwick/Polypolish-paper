@@ -29,11 +29,10 @@ import sys
 def main():
     alignments_by_read = get_alignments()
     repeat_bases = get_repeat_bases(alignments_by_read)
-    total_repeat_size = sum(len(r) for r in repeat_bases.values())
+    total_repeat_size = len(repeat_bases)
     repeat_ranges = get_repeat_ranges(repeat_bases)
-    for reference_name, ranges in repeat_ranges.items():
-        for start, end in ranges:
-            print(f'{reference_name}\t{start}\t{end}')
+    for start, end in repeat_ranges:
+        print(f'{start}\t{end}')
     print(f'total\t{total_repeat_size}')
 
 
@@ -43,6 +42,7 @@ def get_alignments():
     start position and CIGAR) grouped by read.
     """
     alignments_by_read = collections.defaultdict(list)
+    reference_names = set()
     for line in fileinput.input():
         if line.startswith('@'):  # header section
             continue
@@ -52,7 +52,10 @@ def get_alignments():
         reference_name = parts[2]
         start_pos = int(parts[3]) - 1
         cigar = parts[5]
-        alignments_by_read[read_name].append((reference_name, start_pos, cigar))
+        alignments_by_read[read_name].append((start_pos, cigar))
+        reference_names.add(reference_name)
+    if len(reference_names) > 1:
+        sys.exit(f'Error: multiple reference names {reference_names}')
     return alignments_by_read
 
 
@@ -61,21 +64,15 @@ def get_repeat_bases(alignments_by_read):
     This function returns any bases in the reference which are repeats. It looks for any reads
     with multiple alignments, and considers the bases covered by these alignments to be repetitive.
     """
-    repeat_bases = collections.defaultdict(set)
+    repeat_bases = set()
     for read_name, alignments in alignments_by_read.items():
         if len(alignments) < 2:
             continue
-        for reference_name, start_pos, cigar in alignments:
+        for start_pos, cigar in alignments:
             end_pos = get_end_pos(start_pos, cigar)
             for i in range(start_pos, end_pos):
-                repeat_bases[reference_name].add(i)
+                repeat_bases.add(i)
     return repeat_bases
-
-
-def cigar_starts_and_ends_with_match(cigar):
-    cigar_parts = re.findall(r'\d+[MIDNSH=X]', cigar)
-    first_part, last_part = cigar_parts[0], cigar_parts[-1]
-    return first_part[-1] == 'M' and last_part[-1] == 'M'
 
 
 def get_end_pos(start_pos, cigar):
@@ -95,13 +92,6 @@ def get_end_pos(start_pos, cigar):
 
 
 def get_repeat_ranges(repeat_bases):
-    ranges = {}
-    for reference_name, bases in repeat_bases.items():
-        ranges[reference_name] = get_repeat_ranges_one_ref(bases)
-    return ranges
-
-
-def get_repeat_ranges_one_ref(repeat_bases):
     """
     This function takes in the set of repeat bases and returns the discrete integer ranges they
     cover.

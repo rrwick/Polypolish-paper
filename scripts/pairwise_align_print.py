@@ -8,7 +8,6 @@ It then prints the alignment on three lines:
 * the second sequence
 * any differences (indicated with * characters)
 
-
 Copyright 2021 Ryan Wick (rrwick@gmail.com)
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU

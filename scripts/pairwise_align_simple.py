@@ -7,8 +7,7 @@ It then outputs:
 * the overall sequence identity of the alignment and the corresponding qscore
 * the lowest sequence identity of a 100 bp sliding window
 * the lowest sequence identity of a 1000 bp sliding window
-* the total number of single-bp errors in the alignment (e.g. a 5-bp indel add 5 to this total)
-
+* the total number of single-bp errors in the alignment (e.g. a 5-bp indel adds 5 to this total)
 
 Copyright 2021 Ryan Wick (rrwick@gmail.com)
 
