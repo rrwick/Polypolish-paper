@@ -43,24 +43,3 @@ rm "$in".amb "$in".ann "$in".bwt "$in".pac "$in".sa
 rm -r aux
 
 printf "\n"
-
-
-
-# This is the minimap2-based version of HyPo short-read polishing that I tried but ultimately didn't use:
-
-# # Prepare the short-read alignments.
-# bam=hypo_"$RANDOM".bam
-# minimap2 --secondary=no --MD -ax sr -t 16 "$in" "$r1" "$r2" | samtools sort > "$bam"
-# samtools index "$bam"
-
-# # Get genome size and depth values.
-# genome_size=$(fast_count "$in" | cut -f3)
-# depth=$(samtools depth "$bam" | cut -f3 | awk '{total += $1} END {printf("%.0f\n", total/NR)}')
-
-# # Polish!
-# echo -e "$r1\n$r2" > read_filenames.txt
-# hypo -d "$in" -r @read_filenames.txt -s "$genome_size" -c "$depth" -b "$bam" -t 16 -o "$out".fasta
-
-# # Clean up.
-# rm "$bam" "$bam".bai
-# rm read_filenames.txt
