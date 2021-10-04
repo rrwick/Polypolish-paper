@@ -11,4 +11,4 @@ This repo has the following subdirectories:
 * [`scripts`](scripts): contains custom Python scripts we wrote to conduct the analyses in the paper.
 * [`tables`](figures): contains all supplementary tables for the paper.
 
-The datasets used in this paper (reads, assemblies and references) are too large for a GitHub repo, so you can download them from here: [bridges.monash.edu/articles/dataset/Polypolish_paper_dataset/TBA](https://bridges.monash.edu/articles/dataset/Polypolish_paper_dataset/TBA)
+The datasets used in this paper (reads, assemblies and references) are too large for a GitHub repo, so you can download them from here: [bridges.monash.edu/articles/dataset/Polypolish_paper_dataset/16727680](https://bridges.monash.edu/articles/dataset/Polypolish_paper_dataset/16727680)
