@@ -692,7 +692,7 @@ done
 ### Plot results
 
 ```{r short_read_single_tool_first_round, fig.width = 10.5, fig.height = 5, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Distances", col_names = TRUE)
 
 filter(results, polishing == "Trycycler" |
                 polishing == "Trycycler+Medaka-long" |
@@ -734,7 +734,7 @@ set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
                                             "Klebsiella_oxytoca_MSB1_2C" = 4,
                                             "Klebsiella_variicola_INF345" = 5))
 
-ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set)) +
+ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isolate)) +
   geom_point(size=2.5, stroke=2.5) +
   polisher_colours + set_shapes + guides(colour = "none") +
   theme_bw() + theme(plot.background = element_blank()) +
@@ -747,7 +747,7 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set))
 ```
 
 ```{r short_read_single_tool_third_round, fig.width = 7.5, fig.height = 3, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Distances", col_names = TRUE)
 
 filter(results, polishing == "Trycycler+Medaka-long" |
                 polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
@@ -783,7 +783,7 @@ set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
                                             "Klebsiella_oxytoca_MSB1_2C" = 4,
                                             "Klebsiella_variicola_INF345" = 5))
 
-ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set)) +
+ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isolate)) +
   geom_point(size=2.5, stroke=2.5) +
   polisher_colours + set_shapes + guides(colour = "none") +
   theme_bw() + theme(plot.background = element_blank()) +
@@ -796,7 +796,7 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set))
 ```
 
 ```{r short_read_single_tool_all_rounds, fig.width = 19, fig.height = 5, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Distances", col_names = TRUE)
 
 filter(results, polishing == "Trycycler+Medaka-long" |
                 polishing == "Trycycler+Medaka-long+HyPo-short" | polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short" | polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
@@ -835,7 +835,7 @@ set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
                                             "Klebsiella_oxytoca_MSB1_2C" = 4,
                                             "Klebsiella_variicola_INF345" = 5))
 
-ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set)) +
+ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isolate)) +
   geom_point(size=2.5, stroke=2.5) +
   polisher_colours + set_shapes + guides(colour = "none") +
   theme_bw() + theme(plot.background = element_blank()) +
@@ -982,7 +982,7 @@ No improvement, so we're done.
 ## Plot results
 
 ```{r greedy, fig.width = 6, fig.height = 3, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Distances", col_names = TRUE)
 
 filter(results, polishing == "Trycycler+Medaka-long" |
                 polishing == "Trycycler+Medaka-long+Polypolish-short" |
@@ -1003,7 +1003,7 @@ set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
                                             "Klebsiella_oxytoca_MSB1_2C" = 4,
                                             "Klebsiella_variicola_INF345" = 5))
 
-ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set)) +
+ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isolate)) +
   geom_point(size=3, stroke=2.5) +
   polisher_colours + set_shapes + guides(colour = "none") +
   theme_bw() + theme(plot.background = element_blank()) +
@@ -1013,6 +1013,24 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=set))
                      labels = c("0", "10", "100", "1000", "10000", "100000", "1000000")) +
   coord_cartesian(ylim = c(0, 15000)) +
   labs(title = "Real read greedy polishing (sum of pairwise distances)", x = NULL, y = "Errors")
+```
+
+
+
+
+## ALE scores
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    for s in a b c d; do
+        cd "$base_dir"/"$i"/"$s"
+        r1=reads/illumina_1.fastq.gz
+        r2=reads/illumina_2.fastq.gz
+        for a in trycycler trycycler__medaka-long trycycler__medaka-long__hypo-short trycycler__medaka-long__hypo-short__hypo-short trycycler__medaka-long__hypo-short__hypo-short__hypo-short trycycler__medaka-long__nextpolish-short trycycler__medaka-long__nextpolish-short__nextpolish-short trycycler__medaka-long__nextpolish-short__nextpolish-short__nextpolish-short trycycler__medaka-long__ntedit-short trycycler__medaka-long__ntedit-short__ntedit-short trycycler__medaka-long__ntedit-short__ntedit-short__ntedit-short trycycler__medaka-long__pilon-short trycycler__medaka-long__pilon-short__pilon-short trycycler__medaka-long__pilon-short__pilon-short__pilon-short trycycler__medaka-long__polca-short trycycler__medaka-long__polca-short__polca-short trycycler__medaka-long__polca-short__polca-short__polca-short trycycler__medaka-long__polypolish-short trycycler__medaka-long__polypolish-short__polypolish-short trycycler__medaka-long__polypolish-short__polypolish-short__polypolish-short trycycler__medaka-long__racon-short trycycler__medaka-long__racon-short__racon-short trycycler__medaka-long__racon-short__racon-short__racon-short trycycler__medaka-long__wtpoa-short trycycler__medaka-long__wtpoa-short__wtpoa-short trycycler__medaka-long__wtpoa-short__wtpoa-short__wtpoa-short trycycler__medaka-long__polypolish-short__hypo-short trycycler__medaka-long__polypolish-short__nextpolish-short trycycler__medaka-long__polypolish-short__ntedit-short trycycler__medaka-long__polypolish-short__pilon-short trycycler__medaka-long__polypolish-short__polca-short trycycler__medaka-long__polypolish-short__racon-short trycycler__medaka-long__polypolish-short__polca-short__hypo-short trycycler__medaka-long__polypolish-short__polca-short__nextpolish-short trycycler__medaka-long__polypolish-short__polca-short__ntedit-short trycycler__medaka-long__polypolish-short__polca-short__pilon-short trycycler__medaka-long__polypolish-short__polca-short__polca-short trycycler__medaka-long__polypolish-short__polca-short__polypolish-short trycycler__medaka-long__polypolish-short__polca-short__racon-short; do
+            "$wrapper_dir"/ale.sh "$a".fasta "$r1" "$r2" "$a"
+        done
+    done
+done
 ```
 
 
@@ -1032,3 +1050,30 @@ trycycler msa --cluster_dir "$t" --threads 32
 mv "$t"/3_msa.fasta "$t".msa
 rm -r "$t"
 ```
+
+
+For _K. oxytoca_ MSB1_2C read set A, I did a read alignment (both short and long) to these assemblies:
+* Polypolish+POLCA
+* Polypolish+POLCA+Pilon
+
+```{bash eval=FALSE}
+cd "$base_dir"/Klebsiella_oxytoca_MSB1_2C/a
+r1=reads/illumina_1.fastq.gz
+r2=reads/illumina_2.fastq.gz
+rl=reads/nanopore.fastq.gz
+
+p=trycycler__medaka-long__polypolish-short__polca-short
+bwa index "$p".fasta
+bwa mem -t 32 "$p".fasta "$r1" "$r2" | samtools sort > "$p"__illumina.bam
+samtools index "$p"__illumina.bam
+minimap2 -a -x map-ont -t 32 --secondary=no "$p".fasta "$rl" | samtools sort > "$p"__nanopore.bam
+samtools index "$p"__nanopore.bam
+
+p=trycycler__medaka-long__polypolish-short__polca-short__pilon-short
+bwa index "$p".fasta
+bwa mem -t 32 "$p".fasta "$r1" "$r2" | samtools sort > "$p"__illumina.bam
+samtools index "$p"__illumina.bam
+minimap2 -a -x map-ont -t 32 --secondary=no "$p".fasta "$rl" | samtools sort > "$p"__nanopore.bam
+samtools index "$p"__nanopore.bam
+```
+
