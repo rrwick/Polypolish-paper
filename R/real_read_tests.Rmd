@@ -1031,6 +1031,13 @@ for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobe
         done
     done
 done
+
+# Reduce the size of the ALE output files:
+cd "$base_dir"
+for a in */*/*.ale; do
+    grep -P "^#" "$a" > temp
+    mv temp "$a"
+done
 ```
 
 
@@ -1066,6 +1073,7 @@ p=trycycler__medaka-long__polypolish-short__polca-short
 bwa index "$p".fasta
 bwa mem -t 32 "$p".fasta "$r1" "$r2" | samtools sort > "$p"__illumina.bam
 samtools index "$p"__illumina.bam
+rm "$p".fasta.bwt "$p".fasta.pac "$p".fasta.ann "$p".fasta.amb "$p".fasta.sa
 minimap2 -a -x map-ont -t 32 --secondary=no "$p".fasta "$rl" | samtools sort > "$p"__nanopore.bam
 samtools index "$p"__nanopore.bam
 
@@ -1073,6 +1081,7 @@ p=trycycler__medaka-long__polypolish-short__polca-short__pilon-short
 bwa index "$p".fasta
 bwa mem -t 32 "$p".fasta "$r1" "$r2" | samtools sort > "$p"__illumina.bam
 samtools index "$p"__illumina.bam
+rm "$p".fasta.bwt "$p".fasta.pac "$p".fasta.ann "$p".fasta.amb "$p".fasta.sa
 minimap2 -a -x map-ont -t 32 --secondary=no "$p".fasta "$rl" | samtools sort > "$p"__nanopore.bam
 samtools index "$p"__nanopore.bam
 ```
