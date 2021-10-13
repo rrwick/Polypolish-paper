@@ -692,19 +692,19 @@ done
 ### Plot results
 
 ```{r short_read_single_tool_first_round, fig.width = 10.5, fig.height = 5, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Distances", col_names = TRUE)
+results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
-filter(results, polishing == "Trycycler" |
-                polishing == "Trycycler+Medaka-long" |
-                polishing == "Trycycler+Medaka-long+HyPo-short" |
-                polishing == "Trycycler+Medaka-long+NextPolish-shortt" |
-                polishing == "Trycycler+Medaka-long+ntEdit-short" |
-                polishing == "Trycycler+Medaka-long+Pilon-short" |
-                polishing == "Trycycler+Medaka-long+POLCA-short" |
-                polishing == "Trycycler+Medaka-long+Polypolish-short" |
-                polishing == "Trycycler+Medaka-long+Racon-short" |
-                polishing == "Trycycler+Medaka-long+wtpoa-short") -> results
-results$polishing <- factor(results$polishing,
+filter(results, Polishing == "Trycycler" |
+                Polishing == "Trycycler+Medaka-long" |
+                Polishing == "Trycycler+Medaka-long+HyPo-short" |
+                Polishing == "Trycycler+Medaka-long+NextPolish-shortt" |
+                Polishing == "Trycycler+Medaka-long+ntEdit-short" |
+                Polishing == "Trycycler+Medaka-long+Pilon-short" |
+                Polishing == "Trycycler+Medaka-long+POLCA-short" |
+                Polishing == "Trycycler+Medaka-long+Polypolish-short" |
+                Polishing == "Trycycler+Medaka-long+Racon-short" |
+                Polishing == "Trycycler+Medaka-long+wtpoa-short") -> results
+results$Polishing <- factor(results$Polishing,
                             levels = c("Trycycler",
                                        "Trycycler+Medaka-long",
                                        "Trycycler+Medaka-long+HyPo-short",
@@ -734,7 +734,7 @@ set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
                                             "Klebsiella_oxytoca_MSB1_2C" = 4,
                                             "Klebsiella_variicola_INF345" = 5))
 
-ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isolate)) +
+ggplot(results, aes(x=Polishing, y=`Total distance`, colour=Polishing, shape=Isolate)) +
   geom_point(size=2.5, stroke=2.5) +
   polisher_colours + set_shapes + guides(colour = "none") +
   theme_bw() + theme(plot.background = element_blank()) +
@@ -747,17 +747,17 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isola
 ```
 
 ```{r short_read_single_tool_third_round, fig.width = 7.5, fig.height = 3, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Distances", col_names = TRUE)
+results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
-filter(results, polishing == "Trycycler+Medaka-long" |
-                polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
-                polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short" |
-                polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short" |
-                polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short" |
-                polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short" |
-                polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short" |
-                polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short") -> results
-results$polishing <- factor(results$polishing,
+filter(results, Polishing == "Trycycler+Medaka-long" |
+                Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
+                Polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short" |
+                Polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short" |
+                Polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short" |
+                Polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short" |
+                Polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short" |
+                Polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short") -> results
+results$Polishing <- factor(results$Polishing,
                             levels = c("Trycycler+Medaka-long",
                                        "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short",
                                        "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short",
@@ -783,7 +783,7 @@ set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
                                             "Klebsiella_oxytoca_MSB1_2C" = 4,
                                             "Klebsiella_variicola_INF345" = 5))
 
-ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isolate)) +
+ggplot(results, aes(x=Polishing, y=`Total distance`, colour=Polishing, shape=Isolate)) +
   geom_point(size=2.5, stroke=2.5) +
   polisher_colours + set_shapes + guides(colour = "none") +
   theme_bw() + theme(plot.background = element_blank()) +
@@ -796,18 +796,18 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isola
 ```
 
 ```{r short_read_single_tool_all_rounds, fig.width = 19, fig.height = 5, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Distances", col_names = TRUE)
+results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
-filter(results, polishing == "Trycycler+Medaka-long" |
-                polishing == "Trycycler+Medaka-long+HyPo-short" | polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short" | polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
-                polishing == "Trycycler+Medaka-long+NextPolish-short" | polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short" | polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short" |
-                polishing == "Trycycler+Medaka-long+ntEdit-short" | polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short" | polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short" |
-                polishing == "Trycycler+Medaka-long+Pilon-short" | polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short" | polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short" |
-                polishing == "Trycycler+Medaka-long+POLCA-short" | polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short" | polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short" |
-                polishing == "Trycycler+Medaka-long+Polypolish-short" | polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short" | polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short" |
-                polishing == "Trycycler+Medaka-long+Racon-short" | polishing == "Trycycler+Medaka-long+Racon-short+Racon-short" | polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short" |
-                polishing == "Trycycler+Medaka-long+wtpoa-short" | polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short" | polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+wtpoa-short") -> results
-results$polishing <- factor(results$polishing,
+filter(results, Polishing == "Trycycler+Medaka-long" |
+                Polishing == "Trycycler+Medaka-long+HyPo-short" | Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short" | Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
+                Polishing == "Trycycler+Medaka-long+NextPolish-short" | Polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short" | Polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short" |
+                Polishing == "Trycycler+Medaka-long+ntEdit-short" | Polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short" | Polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short" |
+                Polishing == "Trycycler+Medaka-long+Pilon-short" | Polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short" | Polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short" |
+                Polishing == "Trycycler+Medaka-long+POLCA-short" | Polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short" | Polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short" |
+                Polishing == "Trycycler+Medaka-long+Polypolish-short" | Polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short" | Polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short" |
+                Polishing == "Trycycler+Medaka-long+Racon-short" | Polishing == "Trycycler+Medaka-long+Racon-short+Racon-short" | Polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short" |
+                Polishing == "Trycycler+Medaka-long+wtpoa-short" | Polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short" | Polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+wtpoa-short") -> results
+results$Polishing <- factor(results$Polishing,
                             levels = c("Trycycler+Medaka-long",
                                        "Trycycler+Medaka-long+HyPo-short", "Trycycler+Medaka-long+HyPo-short+HyPo-short", "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short",
                                        "Trycycler+Medaka-long+NextPolish-short", "Trycycler+Medaka-long+NextPolish-short+NextPolish-short", "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short",
@@ -835,7 +835,7 @@ set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
                                             "Klebsiella_oxytoca_MSB1_2C" = 4,
                                             "Klebsiella_variicola_INF345" = 5))
 
-ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isolate)) +
+ggplot(results, aes(x=Polishing, y=`Total distance`, colour=Polishing, shape=Isolate)) +
   geom_point(size=2.5, stroke=2.5) +
   polisher_colours + set_shapes + guides(colour = "none") +
   theme_bw() + theme(plot.background = element_blank()) +
@@ -848,31 +848,31 @@ ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isola
 ```
 
 ```{r}
-sum(filter(results, polishing == "Trycycler+Medaka-long")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+HyPo-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+NextPolish-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+ntEdit-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Pilon-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+POLCA-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Polypolish-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Racon-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Racon-short+Racon-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+wtpoa-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short")$total_distance)
-sum(filter(results, polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+wtpoa-short")$total_distance)
+sum(filter(results, Polishing == "Trycycler+Medaka-long")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+HyPo-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+NextPolish-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+ntEdit-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Pilon-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Pilon-short+Pilon-short+Pilon-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+POLCA-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+POLCA-short+POLCA-short+POLCA-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Polypolish-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Racon-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Racon-short+Racon-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+wtpoa-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short")$`Total distance`)
+sum(filter(results, Polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+wtpoa-short")$`Total distance`)
 ```
 
 
@@ -982,12 +982,12 @@ No improvement, so we're done.
 ## Plot results
 
 ```{r greedy, fig.width = 6, fig.height = 3, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S2_real_read_results.xlsx", sheet = "Distances", col_names = TRUE)
+results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
-filter(results, polishing == "Trycycler+Medaka-long" |
-                polishing == "Trycycler+Medaka-long+Polypolish-short" |
-                polishing == "Trycycler+Medaka-long+Polypolish-short+POLCA-short") -> results
-results$polishing <- factor(results$polishing,
+filter(results, Polishing == "Trycycler+Medaka-long" |
+                Polishing == "Trycycler+Medaka-long+Polypolish-short" |
+                Polishing == "Trycycler+Medaka-long+Polypolish-short+POLCA-short") -> results
+results$Polishing <- factor(results$Polishing,
                             levels = c("Trycycler+Medaka-long",
                                        "Trycycler+Medaka-long+Polypolish-short",
                                        "Trycycler+Medaka-long+Polypolish-short+POLCA-short"))
@@ -1003,7 +1003,7 @@ set_shapes <- scale_shape_manual(values = c("Acinetobacter_baumannii_J9" = 0,
                                             "Klebsiella_oxytoca_MSB1_2C" = 4,
                                             "Klebsiella_variicola_INF345" = 5))
 
-ggplot(results, aes(x=polishing, y=total_distance, colour=polishing, shape=isolate)) +
+ggplot(results, aes(x=Polishing, y=`Total distance`, colour=Polishing, shape=Isolate)) +
   geom_point(size=3, stroke=2.5) +
   polisher_colours + set_shapes + guides(colour = "none") +
   theme_bw() + theme(plot.background = element_blank()) +
@@ -1086,3 +1086,15 @@ minimap2 -a -x map-ont -t 32 --secondary=no "$p".fasta "$rl" | samtools sort > "
 samtools index "$p"__nanopore.bam
 ```
 
+Get chromosome sizes for Table S4:
+```{bash eval=FALSE}
+for a in trycycler trycycler__medaka-long trycycler__medaka-long__hypo-short trycycler__medaka-long__hypo-short__hypo-short trycycler__medaka-long__hypo-short__hypo-short__hypo-short trycycler__medaka-long__nextpolish-short trycycler__medaka-long__nextpolish-short__nextpolish-short trycycler__medaka-long__nextpolish-short__nextpolish-short__nextpolish-short trycycler__medaka-long__ntedit-short trycycler__medaka-long__ntedit-short__ntedit-short trycycler__medaka-long__ntedit-short__ntedit-short__ntedit-short trycycler__medaka-long__pilon-short trycycler__medaka-long__pilon-short__pilon-short trycycler__medaka-long__pilon-short__pilon-short__pilon-short trycycler__medaka-long__polca-short trycycler__medaka-long__polca-short__polca-short trycycler__medaka-long__polca-short__polca-short__polca-short trycycler__medaka-long__polypolish-short trycycler__medaka-long__polypolish-short__polypolish-short trycycler__medaka-long__polypolish-short__polypolish-short__polypolish-short trycycler__medaka-long__racon-short trycycler__medaka-long__racon-short__racon-short trycycler__medaka-long__racon-short__racon-short__racon-short trycycler__medaka-long__wtpoa-short trycycler__medaka-long__wtpoa-short__wtpoa-short trycycler__medaka-long__wtpoa-short__wtpoa-short__wtpoa-short trycycler__medaka-long__polypolish-short__hypo-short trycycler__medaka-long__polypolish-short__nextpolish-short trycycler__medaka-long__polypolish-short__ntedit-short trycycler__medaka-long__polypolish-short__pilon-short trycycler__medaka-long__polypolish-short__polca-short trycycler__medaka-long__polypolish-short__racon-short trycycler__medaka-long__polypolish-short__polca-short__hypo-short trycycler__medaka-long__polypolish-short__polca-short__nextpolish-short trycycler__medaka-long__polypolish-short__polca-short__ntedit-short trycycler__medaka-long__polypolish-short__polca-short__pilon-short trycycler__medaka-long__polypolish-short__polca-short__polca-short trycycler__medaka-long__polypolish-short__polca-short__polypolish-short trycycler__medaka-long__polypolish-short__polca-short__racon-short; do
+    for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+        for s in a b c d; do
+            cd "$base_dir"/"$i"/"$s"
+            printf $i"\t"$s"\t"$a"\t"
+            fast_count "$a".fasta | cut -f6
+        done
+    done
+done
+```
