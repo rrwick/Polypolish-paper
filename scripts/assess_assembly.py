@@ -3,7 +3,7 @@
 This script assesses the accuracy of an assembly in a number of ways:
  * alignment to a reference sequence
  * short-read-based assessment using BWA MEM and ALE
- * protein-based assessment with Prodigal and IDEEL
+ * protein-based assessment with Prodigal
 
 Copyright 2021 Ryan Wick (rrwick@gmail.com)
 
@@ -22,7 +22,6 @@ import gzip
 import math
 import pathlib
 import re
-import statistics
 import subprocess
 import sys
 import tempfile
@@ -51,12 +50,6 @@ def get_arguments():
     read_args.add_argument('-2', '--short2', type=str,
                            help='Illumina read file (second reads in pair)')
 
-    ideel_args = parser.add_argument_group('IDEEL')
-    ideel_args.add_argument('-d', '--diamond_db', type=str,
-                            help='Diamond database of UniProt TrEMBL proteins')
-    ideel_args.add_argument('--threshold', type=float, default=0.9,
-                            help='Full-length threshold fraction (default=0.9)')
-
     other_args = parser.add_argument_group('Other')
     other_args.add_argument('--threads', type=int, default=16,
                             help='Number of CPU threads for alignment')
@@ -78,8 +71,6 @@ HEADERS = ['genome', 'test_name',
            'homopolymer_errors', 'non_homopolymer_errors',
            'lowest_100_bp_identity', 'lowest_1000_bp_identity',
            'prodigal_count', 'total_prodigal_length', 'mean_prodigal_length',
-           'ideel_count', 'ideel_full_length_count',
-           'ideel_full_length_fraction', 'mean_ideel_result',
            'total_mapq', 'total_alignment_score',
            'ale_score', 'ale_place_avg', 'ale_insert_avg', 'ale_kmer_avg', 'ale_depth_score_avg']
 
@@ -89,6 +80,11 @@ def main():
     if args.header:
         print('\t'.join(HEADERS))
         sys.exit()
+
+    if args.genome is None:
+        sys.exit('Error: a value for --genome is required')
+    if args.name is None:
+        sys.exit('Error: a value for --name is required')
 
     assembly_seq, ref_seq = load_sequences(args)
     assembly_length, ref_length = len(assembly_seq), len(ref_seq)
@@ -127,9 +123,8 @@ def main():
     lowest_100_bp_identity = get_lowest_window_identity(expanded_cigar, 100)
     lowest_1000_bp_identity = get_lowest_window_identity(expanded_cigar, 1000)
 
-    prodigal_count, total_prodigal_length, mean_prodigal_length, \
-        ideel_count, ideel_full_length_count, ideel_full_length_fraction, mean_ideel_result = \
-        get_prodigal_and_ideel_scores(assembly_seq, args.diamond_db, args.threshold, args.threads)
+    prodigal_count, total_prodigal_length, mean_prodigal_length = \
+        get_prodigal_scores(assembly_seq)
 
     total_mapq, total_alignment_score, \
         ale_score, place_score, insert_score, kmer_score, depth_score = \
@@ -146,7 +141,6 @@ def main():
                str(homopolymer_errors), str(nonhomopolymer_errors),
                f'{lowest_100_bp_identity:.0f}%', f'{lowest_1000_bp_identity:.1f}%',
                prodigal_count, total_prodigal_length, mean_prodigal_length,
-               ideel_count, ideel_full_length_count, ideel_full_length_fraction, mean_ideel_result,
                total_mapq, total_alignment_score,
                ale_score, place_score, insert_score, kmer_score, depth_score]
 
@@ -184,8 +178,7 @@ def load_sequences(args):
 
 def load_repeats(repeat_filename):
     if repeat_filename is None:
-        print('No reference repeats supplied', file=sys.stderr)
-        return None
+        sys.exit('Error: no reference repeats supplied', file=sys.stderr)
     print('Loading reference repeats:  ', file=sys.stderr, end='')
     repeats = []
     total = 0
@@ -495,7 +488,7 @@ def is_indel_homopolymer_2(i, indel_size, seq_a, seq_b):
     return False
 
 
-def get_prodigal_and_ideel_scores(assembly_seq, diamond_db, threshold, threads):
+def get_prodigal_scores(assembly_seq):
     print('', file=sys.stderr)
     print('Getting proteins from Prodigal:', file=sys.stderr)
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -523,49 +516,7 @@ def get_prodigal_and_ideel_scores(assembly_seq, diamond_db, threshold, threads):
         print(f'  Total protein length: {total_prodigal_length}', file=sys.stderr)
         print(f'  Mean protein length:  {mean_prodigal_length}', file=sys.stderr)
 
-        if diamond_db is not None:
-            print('', file=sys.stderr)
-            print('Getting IDEEL protein fractions:', file=sys.stderr)
-
-            diamond_out = str(temp_dir / 'proteins.lengths')
-            diamond_command = f'diamond blastp --threads {threads} -b5 -c1 --max-target-seqs 1 ' \
-                f'--db {diamond_db} --query {prodigal_out} --outfmt 6 qlen slen ' \
-                f'--out {diamond_out}'
-            print('  ' + diamond_command, file=sys.stderr)
-            subprocess.run(diamond_command, shell=True, capture_output=True)
-
-            ideel_results = load_ideel_fractions(diamond_out)
-            ideel_count = len(ideel_results)
-            ideel_full_length_count = len([f for f in ideel_results if f >= threshold])
-            ideel_full_length_fraction = ideel_full_length_count / ideel_count
-            mean_ideel_result = statistics.mean(ideel_results)
-
-            ideel_count = str(ideel_count)
-            ideel_full_length_count = str(ideel_full_length_count)
-            ideel_full_length_fraction = f'{ideel_full_length_fraction:.5f}'
-            mean_ideel_result = f'{mean_ideel_result:.5f}'
-
-            print(f'  IDEEL count:                {ideel_count}', file=sys.stderr)
-            print(f'  IDEEL full-length count:    {ideel_full_length_count}', file=sys.stderr)
-            print(f'  IDEEL full-length fraction: {ideel_full_length_fraction}', file=sys.stderr)
-            print(f'  Mean IDEEL result:          {mean_ideel_result}', file=sys.stderr)
-
-        else:
-            ideel_count, ideel_full_length_count = '', ''
-            ideel_full_length_fraction, mean_ideel_result = '', ''
-
-    return prodigal_count, total_prodigal_length, mean_prodigal_length, \
-        ideel_count, ideel_full_length_count, ideel_full_length_fraction, mean_ideel_result
-
-
-def load_ideel_fractions(diamond_out):
-    fractions = []
-    with open(diamond_out, 'rt') as d:
-        for line in d:
-            parts = line.strip().split('\t')
-            assert len(parts) == 2
-            fractions.append(int(parts[0]) / int(parts[1]))
-    return fractions
+    return prodigal_count, total_prodigal_length, mean_prodigal_length
 
 
 def get_ale_scores(assembly_seq, reads_1, reads_2, threads):
