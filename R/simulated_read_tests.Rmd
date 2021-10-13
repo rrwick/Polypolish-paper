@@ -611,7 +611,8 @@ c = c("unpolished" = "#cccccc",
       "NextPolish-short+Polypolish-short+ntEdit-short" = ntedit,
       "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short" = hypo,
       "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short" = polypolish,
-      "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short" = nextpolish
+      "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short" = nextpolish,
+      "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short+NextPolish-short" = nextpolish
       )
 
 # Make a colour scale for ggplot2:
@@ -1564,7 +1565,7 @@ NextPolish is the winner.
 
 ### Results
 
-```{r short_read_greedy, fig.width = 8, fig.height = 4.5, useDingbats = FALSE}
+```{r short_read_greedy, fig.width = 8.5, fig.height = 4.5, useDingbats = FALSE}
 results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
                    test_name == "NextPolish-short" |
@@ -1572,7 +1573,8 @@ results %>% filter(test_name == "unpolished" |
                    test_name == "NextPolish-short+Polypolish-short+ntEdit-short" |
                    test_name == "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short" |
                    test_name == "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short" |
-                   test_name == "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short") -> results
+                   test_name == "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short" |
+                   test_name == "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short+NextPolish-short") -> results
 results$test_name <- factor(results$test_name,
                             levels = c("unpolished",
                                        "NextPolish-short",
@@ -1580,7 +1582,8 @@ results$test_name <- factor(results$test_name,
                                        "NextPolish-short+Polypolish-short+ntEdit-short",
                                        "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short",
                                        "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short",
-                                       "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short"))
+                                       "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short",
+                                       "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short+NextPolish-short"))
 
 display_names <- gsub("-short", "", levels(results$test_name))
 display_names <- gsub("\\+", "+\n", display_names)
@@ -1612,6 +1615,7 @@ totals_and_means(results, "NextPolish-short+Polypolish-short+ntEdit-short")
 totals_and_means(results, "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short")
 totals_and_means(results, "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short")
 totals_and_means(results, "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short")
+totals_and_means(results, "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-short+Polypolish-short+NextPolish-short+NextPolish-short")
 ```
 
 
