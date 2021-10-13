@@ -932,7 +932,7 @@ mv *-short.tsv results
 ```
 
 ```{r short_read_single_tool_first_round, fig.width = 7, fig.height = 3, useDingbats = FALSE}
-results <- read_delim("../tables/Table_S1_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
                    test_name == "HyPo-short" | 
                    test_name == "NextPolish-short" |
@@ -972,7 +972,7 @@ plot_errors("repeat_errors", "Single-tool short-read polishing (repeat errors)")
 plot_errors("non_repeat_errors", "Single-tool short-read polishing (non-repeat errors)")
 ```
 ```{r short_read_single_tool_third_round, fig.width = 7, fig.height = 3, useDingbats = FALSE}
-results <- read_delim("../tables/Table_S1_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
                    test_name == "HyPo-short+HyPo-short+HyPo-short" |
                    test_name == "NextPolish-short+NextPolish-short+NextPolish-short" |
@@ -1024,7 +1024,7 @@ sum(filter(results, test_name == "Racon-short+Racon-short+Racon-short")$overall_
 ```
 
 ```{r short_read_single_tool_all_rounds, fig.width = 15, fig.height = 6, useDingbats = FALSE}
-results <- read_delim("../tables/Table_S1_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
                    test_name == "HyPo-short" | test_name == "HyPo-short+HyPo-short" | test_name == "HyPo-short+HyPo-short+HyPo-short" | 
                    test_name == "NextPolish-short" | test_name == "NextPolish-short+NextPolish-short" | test_name == "NextPolish-short+NextPolish-short+NextPolish-short" |
@@ -1565,7 +1565,7 @@ NextPolish is the winner.
 ### Results
 
 ```{r short_read_greedy, fig.width = 8, fig.height = 4.5, useDingbats = FALSE}
-results <- read_delim("../tables/Table_S1_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
                    test_name == "NextPolish-short" |
                    test_name == "NextPolish-short+Polypolish-short" |
@@ -1689,7 +1689,7 @@ for f in results/reference__*.tsv; do printf $f"\t"; cut -f7 "$f" | grep -cvP "^
 
 
 ```{r short_read_single_tool_reference, fig.width = 7, fig.height = 4, useDingbats = FALSE}
-results <- read_delim("../tables/Table_S1_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "reference" |
                    test_name == "reference+HyPo-short" | 
                    test_name == "reference+NextPolish-short" |
@@ -1849,7 +1849,7 @@ mv *-hybrid.tsv results
 
 
 ```{r short_vs_hybrid, fig.width = 9, fig.height = 4, useDingbats = FALSE}
-results <- read_delim("../tables/Table_S1_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
                    test_name == "HyPo-short+HyPo-short+HyPo-short" | 
                    test_name == "HyPo-hybrid+HyPo-hybrid+HyPo-hybrid" |
@@ -1934,7 +1934,7 @@ totals_and_means(results, "reference+Pilon-hybrid")
 The goal of this section is to see which assembly quality metrics best correlate with assembly identity. I.e. without a ground truth reference, which metric could someone use to tell if their assembly was accurate?
 
 ```{r}
-results <- read_delim("../tables/Table_S1_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results$overall_identity <- as.numeric(sub("%", "", results$overall_identity))
 genomes <- unique(results$genome)
 ```
