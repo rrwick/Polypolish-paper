@@ -12,3 +12,5 @@ This repo has the following subdirectories:
 * [`tables`](figures): contains all supplementary tables for the paper.
 
 The datasets used in this paper (reads, assemblies and references) are too large for a GitHub repo, so you can download them from here: [bridges.monash.edu/articles/dataset/Polypolish_paper_dataset/16727680](https://bridges.monash.edu/articles/dataset/Polypolish_paper_dataset/16727680)
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5581894.svg)](https://doi.org/10.5281/zenodo.5581894)
