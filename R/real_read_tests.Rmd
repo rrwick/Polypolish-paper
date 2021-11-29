@@ -697,7 +697,7 @@ results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Resu
 filter(results, Polishing == "Trycycler" |
                 Polishing == "Trycycler+Medaka-long" |
                 Polishing == "Trycycler+Medaka-long+HyPo-short" |
-                Polishing == "Trycycler+Medaka-long+NextPolish-shortt" |
+                Polishing == "Trycycler+Medaka-long+NextPolish-short" |
                 Polishing == "Trycycler+Medaka-long+ntEdit-short" |
                 Polishing == "Trycycler+Medaka-long+Pilon-short" |
                 Polishing == "Trycycler+Medaka-long+POLCA-short" |

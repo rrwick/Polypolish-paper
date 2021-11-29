@@ -178,7 +178,7 @@ def load_sequences(args):
 
 def load_repeats(repeat_filename):
     if repeat_filename is None:
-        sys.exit('Error: no reference repeats supplied', file=sys.stderr)
+        sys.exit('Error: no reference repeats supplied')
     print('Loading reference repeats:  ', file=sys.stderr, end='')
     repeats = []
     total = 0
