@@ -692,7 +692,7 @@ done
 ### Plot results
 
 ```{r short_read_single_tool_first_round, fig.width = 10.5, fig.height = 5, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S5_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, Polishing == "Trycycler" |
                 Polishing == "Trycycler+Medaka-long" |
@@ -747,7 +747,7 @@ ggplot(results, aes(x=Polishing, y=`Total distance`, colour=Polishing, shape=Iso
 ```
 
 ```{r short_read_single_tool_third_round, fig.width = 7.5, fig.height = 3, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S5_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, Polishing == "Trycycler+Medaka-long" |
                 Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
@@ -796,7 +796,7 @@ ggplot(results, aes(x=Polishing, y=`Total distance`, colour=Polishing, shape=Iso
 ```
 
 ```{r short_read_single_tool_all_rounds, fig.width = 19, fig.height = 5, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S5_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, Polishing == "Trycycler+Medaka-long" |
                 Polishing == "Trycycler+Medaka-long+HyPo-short" | Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short" | Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
@@ -879,12 +879,12 @@ sum(filter(results, Polishing == "Trycycler+Medaka-long+wtpoa-short+wtpoa-short+
 
 ## Greedy combination
 
-## Round one
+### Round one
 
 Already done - Polypolish was the winner.
 
 
-## Round two
+### Round two
 
 ```{bash eval=FALSE}
 __conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
@@ -931,7 +931,7 @@ done
 POLCA is the winner.
 
 
-## Round three
+### Round three
 
 ```{bash eval=FALSE}
 __conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
@@ -979,10 +979,10 @@ No improvement, so we're done.
 
 
 
-## Plot results
+### Plot results
 
 ```{r greedy, fig.width = 6, fig.height = 3, useDingbats = FALSE}
-results <- read_excel("../tables/Table_S4_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
+results <- read_excel("../tables/Table_S5_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, Polishing == "Trycycler+Medaka-long" |
                 Polishing == "Trycycler+Medaka-long+Polypolish-short" |
@@ -1018,7 +1018,7 @@ ggplot(results, aes(x=Polishing, y=`Total distance`, colour=Polishing, shape=Iso
 
 
 
-## ALE scores
+### ALE scores
 
 ```{bash eval=FALSE}
 for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
@@ -1043,7 +1043,7 @@ done
 
 
 
-## Detailed analysis
+### Detailed analysis
 
 For some results, I wanted to manually look at the differences. E.g. when Pilon made the _Klebsiella_ distance increase, where in the genome was that happening?
 
@@ -1086,9 +1086,98 @@ minimap2 -a -x map-ont -t 32 --secondary=no "$p".fasta "$rl" | samtools sort > "
 samtools index "$p"__nanopore.bam
 ```
 
-Get chromosome sizes for Table S4:
+Get chromosome sizes for Table S5:
 ```{bash eval=FALSE}
 for a in trycycler trycycler__medaka-long trycycler__medaka-long__hypo-short trycycler__medaka-long__hypo-short__hypo-short trycycler__medaka-long__hypo-short__hypo-short__hypo-short trycycler__medaka-long__nextpolish-short trycycler__medaka-long__nextpolish-short__nextpolish-short trycycler__medaka-long__nextpolish-short__nextpolish-short__nextpolish-short trycycler__medaka-long__ntedit-short trycycler__medaka-long__ntedit-short__ntedit-short trycycler__medaka-long__ntedit-short__ntedit-short__ntedit-short trycycler__medaka-long__pilon-short trycycler__medaka-long__pilon-short__pilon-short trycycler__medaka-long__pilon-short__pilon-short__pilon-short trycycler__medaka-long__polca-short trycycler__medaka-long__polca-short__polca-short trycycler__medaka-long__polca-short__polca-short__polca-short trycycler__medaka-long__polypolish-short trycycler__medaka-long__polypolish-short__polypolish-short trycycler__medaka-long__polypolish-short__polypolish-short__polypolish-short trycycler__medaka-long__racon-short trycycler__medaka-long__racon-short__racon-short trycycler__medaka-long__racon-short__racon-short__racon-short trycycler__medaka-long__wtpoa-short trycycler__medaka-long__wtpoa-short__wtpoa-short trycycler__medaka-long__wtpoa-short__wtpoa-short__wtpoa-short trycycler__medaka-long__polypolish-short__hypo-short trycycler__medaka-long__polypolish-short__nextpolish-short trycycler__medaka-long__polypolish-short__ntedit-short trycycler__medaka-long__polypolish-short__pilon-short trycycler__medaka-long__polypolish-short__polca-short trycycler__medaka-long__polypolish-short__racon-short trycycler__medaka-long__polypolish-short__polca-short__hypo-short trycycler__medaka-long__polypolish-short__polca-short__nextpolish-short trycycler__medaka-long__polypolish-short__polca-short__ntedit-short trycycler__medaka-long__polypolish-short__polca-short__pilon-short trycycler__medaka-long__polypolish-short__polca-short__polca-short trycycler__medaka-long__polypolish-short__polca-short__polypolish-short trycycler__medaka-long__polypolish-short__polca-short__racon-short; do
+    for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+        for s in a b c d; do
+            cd "$base_dir"/"$i"/"$s"
+            printf $i"\t"$s"\t"$a"\t"
+            fast_count "$a".fasta | cut -f6
+        done
+    done
+done
+```
+
+
+
+## Greedy combination (no Polypolish)
+
+### Round one
+
+Already done - NextPolish was the winner.
+
+
+### Round two
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/hypo-short.sh trycycler__medaka-long__nextpolish-short.fasta "$r1" "$r2" trycycler__medaka-long__nextpolish-short__hypo-short
+done
+conda deactivate; conda deactivate
+
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/ntedit-short.sh trycycler__medaka-long__nextpolish-short.fasta "$r1" "$r2" trycycler__medaka-long__nextpolish-short__ntedit-short
+    "$wrapper_dir"/pilon-short.sh trycycler__medaka-long__nextpolish-short.fasta "$r1" "$r2" trycycler__medaka-long__nextpolish-short__pilon-short
+    "$wrapper_dir"/polca-short.sh trycycler__medaka-long__nextpolish-short.fasta "$r1" "$r2" trycycler__medaka-long__nextpolish-short__polca-short
+    "$wrapper_dir"/racon-short.sh trycycler__medaka-long__nextpolish-short.fasta "$r1" "$r2" trycycler__medaka-long__nextpolish-short__racon-short
+done
+
+for p in trycycler__medaka-long__nextpolish-short__hypo-short trycycler__medaka-long__nextpolish-short__nextpolish-short trycycler__medaka-long__nextpolish-short__ntedit-short trycycler__medaka-long__nextpolish-short__pilon-short trycycler__medaka-long__nextpolish-short__polca-short trycycler__medaka-long__nextpolish-short__racon-short; do
+    for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+        cd "$base_dir"/"$i"
+        printf $i"\t"$p"\t"
+        "$script_dir"/pairwise_distances.py a/"$p".fasta b/"$p".fasta c/"$p".fasta d/"$p".fasta > "$p".phylip
+    done
+done
+```
+
+No improvement, so we're done.
+
+
+### ALE scores
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    for s in a b c d; do
+        cd "$base_dir"/"$i"/"$s"
+        r1=reads/illumina_1.fastq.gz
+        r2=reads/illumina_2.fastq.gz
+        for a in trycycler__medaka-long__nextpolish-short__hypo-short trycycler__medaka-long__nextpolish-short__ntedit-short trycycler__medaka-long__nextpolish-short__pilon-short trycycler__medaka-long__nextpolish-short__polca-short trycycler__medaka-long__nextpolish-short__racon-short; do
+            "$wrapper_dir"/ale.sh "$a".fasta "$r1" "$r2" "$a"
+        done
+    done
+done
+
+# Reduce the size of the ALE output files:
+cd "$base_dir"
+for a in */*/*.ale; do
+    grep -P "^#" "$a" > temp
+    mv temp "$a"
+done
+```
+
+Get chromosome sizes for Table S5:
+```{bash eval=FALSE}
+for a in trycycler__medaka-long__nextpolish-short__hypo-short trycycler__medaka-long__nextpolish-short__ntedit-short trycycler__medaka-long__nextpolish-short__pilon-short trycycler__medaka-long__nextpolish-short__polca-short trycycler__medaka-long__nextpolish-short__racon-short; do
     for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
         for s in a b c d; do
             cd "$base_dir"/"$i"/"$s"
