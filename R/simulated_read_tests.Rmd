@@ -1619,6 +1619,331 @@ totals_and_means(results, "NextPolish-short+Polypolish-short+ntEdit-short+HyPo-s
 ```
 
 
+
+
+## Greedy combination (no Polypolish)
+
+I'm now going to do the greedy polishing again, but this time without Polypolish included. This will allow me to quantify how much Polypolish contributed to the best results.
+
+Rounds one and two are already done (NextPolish and ntEdit won), so I start with round 3.
+
+### Round three
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short.fasta.gz
+    "$wrapper_dir"/hypo-short.sh "$a"/nextpolish-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short.tsv &
+done
+conda deactivate; conda deactivate
+
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short.fasta.gz
+    "$wrapper_dir"/nextpolish-short.sh "$a"/nextpolish-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__nextpolish-short
+    "$wrapper_dir"/ntedit-short.sh "$a"/nextpolish-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__ntedit-short
+    "$wrapper_dir"/pilon-short.sh "$a"/nextpolish-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__pilon-short
+    "$wrapper_dir"/polca-short.sh "$a"/nextpolish-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__polca-short
+    "$wrapper_dir"/racon-short.sh "$a"/nextpolish-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__racon-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+NextPolish-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__nextpolish-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__nextpolish-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+ntEdit-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__ntedit-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__ntedit-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+Pilon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__pilon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__pilon-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+POLCA-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__polca-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__polca-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+Racon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__racon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__racon-short.tsv &
+    wait
+done
+
+mv *-short.tsv results
+
+# Tally the totals
+cd "$base_dir/results"
+for p in hypo nextpolish ntedit pilon polca racon; do
+    f=nextpolish-short__ntedit-short__"$p"-short.tsv
+    printf $f"\t"
+    cat "$f" | cut -f7 | awk '{s+=$1} END {print s}'
+done
+```
+
+HyPo is the winner.
+
+
+### Round four
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short__hypo-short.fasta.gz
+    "$wrapper_dir"/hypo-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__hypo-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+HyPo-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__hypo-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__hypo-short.tsv &
+done
+conda deactivate; conda deactivate
+
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short__hypo-short.fasta.gz
+    "$wrapper_dir"/nextpolish-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__nextpolish-short
+    "$wrapper_dir"/ntedit-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short
+    "$wrapper_dir"/pilon-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__pilon-short
+    "$wrapper_dir"/polca-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__polca-short
+    "$wrapper_dir"/racon-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__racon-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+NextPolish-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__nextpolish-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__nextpolish-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+Pilon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__pilon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__pilon-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+POLCA-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__polca-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__polca-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+Racon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__racon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__racon-short.tsv &
+    wait
+done
+
+mv *-short.tsv results
+
+# Tally the totals
+cd "$base_dir/results"
+for p in hypo nextpolish ntedit pilon polca racon; do
+    f=nextpolish-short__ntedit-short__hypo-short__"$p"-short.tsv
+    printf $f"\t"
+    cat "$f" | cut -f7 | awk '{s+=$1} END {print s}'
+done
+```
+
+ntEdit is the winner.
+
+
+### Round five
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta.gz
+    "$wrapper_dir"/hypo-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__hypo-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+HyPo-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__hypo-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__hypo-short.tsv &
+done
+conda deactivate; conda deactivate
+
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta.gz
+    "$wrapper_dir"/nextpolish-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__nextpolish-short
+    "$wrapper_dir"/ntedit-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__ntedit-short
+    "$wrapper_dir"/pilon-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short
+    "$wrapper_dir"/polca-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__polca-short
+    "$wrapper_dir"/racon-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__racon-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+NextPolish-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__nextpolish-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__nextpolish-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+ntEdit-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__ntedit-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__ntedit-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+POLCA-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__polca-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__polca-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Racon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__racon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__racon-short.tsv &
+    wait
+done
+
+mv *-short.tsv results
+
+# Tally the totals
+cd "$base_dir/results"
+for p in hypo nextpolish ntedit pilon polca racon; do
+    f=nextpolish-short__ntedit-short__hypo-short__ntedit-short__"$p"-short.tsv
+    printf $f"\t"
+    cat "$f" | cut -f7 | awk '{s+=$1} END {print s}'
+done
+```
+
+Pilon and POLCA tied as winners. I'm going with Pilon as it has a slightly higher total ALE score.
+
+
+### Round six
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta.gz
+    "$wrapper_dir"/hypo-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__hypo-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+HyPo-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__hypo-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__hypo-short.tsv &
+done
+conda deactivate; conda deactivate
+
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta.gz
+    "$wrapper_dir"/nextpolish-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__nextpolish-short
+    "$wrapper_dir"/ntedit-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__ntedit-short
+    "$wrapper_dir"/pilon-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__pilon-short
+    "$wrapper_dir"/polca-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short
+    "$wrapper_dir"/racon-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__racon-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+NextPolish-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__nextpolish-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__nextpolish-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+ntEdit-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__ntedit-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__ntedit-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+Pilon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__pilon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__pilon-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+POLCA-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+Racon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__racon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__racon-short.tsv &
+    wait
+done
+
+mv *-short.tsv results
+
+# Tally the totals
+cd "$base_dir/results"
+for p in hypo nextpolish ntedit pilon polca racon; do
+    f=nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__"$p"-short.tsv
+    printf $f"\t"
+    cat "$f" | cut -f7 | awk '{s+=$1} END {print s}'
+done
+```
+
+POLCA is the winner.
+
+
+### Round seven
+
+```{bash eval=FALSE}
+__conda_setup="$('/home/ubuntu/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ubuntu/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ubuntu/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ubuntu/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate hypo
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta.gz
+    "$wrapper_dir"/hypo-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__hypo-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+POLCA-short+HyPo-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__hypo-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__hypo-short.tsv &
+done
+conda deactivate; conda deactivate
+
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    gunzip "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta.gz
+    "$wrapper_dir"/nextpolish-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__nextpolish-short
+    "$wrapper_dir"/ntedit-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__ntedit-short
+    "$wrapper_dir"/pilon-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__pilon-short
+    "$wrapper_dir"/polca-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__polca-short
+    "$wrapper_dir"/racon-short.sh "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short.fasta "$r1" "$r2" "$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__racon-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+POLCA-short+NextPolish-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__nextpolish-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__nextpolish-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+POLCA-short+ntEdit-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__ntedit-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__ntedit-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+POLCA-short+Pilon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__pilon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__pilon-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+POLCA-short+POLCA-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__polca-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__polca-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name NextPolish-short+ntEdit-short+HyPo-short+ntEdit-short+Pilon-short+POLCA-short+Racon-short -a "$base_dir"/polished_genomes/"$a"/nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__racon-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__racon-short.tsv &
+    wait
+done
+
+mv *-short.tsv results
+
+# Tally the totals
+cd "$base_dir/results"
+for p in hypo nextpolish ntedit pilon polca racon; do
+    f=nextpolish-short__ntedit-short__hypo-short__ntedit-short__pilon-short__polca-short__"$p"-short.tsv
+    printf $f"\t"
+    cat "$f" | cut -f7 | awk '{s+=$1} END {print s}'
+done
+```
+
+No improvement on this round.
+
+
+
+
 ## Polishing the reference
 
 I then ran each polisher on the error-free reference genomes. This was to quantify how likely polishers are at introducing errors.
@@ -2018,3 +2343,35 @@ In the end, I can make the following recommendations:
 
 For each of these metrics, higher values are correlated with better assemblies.
 
+
+
+# Confusion matrices
+
+```{bash eval=FALSE}
+cd "$base_dir"/results
+"$script_dir"/confusion_matrix.py --header > hypo-short.confusion_matrix
+"$script_dir"/confusion_matrix.py --header > nextpolish-short.confusion_matrix
+"$script_dir"/confusion_matrix.py --header > ntedit-short.confusion_matrix
+"$script_dir"/confusion_matrix.py --header > pilon-short.confusion_matrix
+"$script_dir"/confusion_matrix.py --header > polca-short.confusion_matrix
+"$script_dir"/confusion_matrix.py --header > polypolish-short.confusion_matrix
+"$script_dir"/confusion_matrix.py --header > racon-short.confusion_matrix
+"$script_dir"/confusion_matrix.py --header > wtpoa-short.confusion_matrix
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name HyPo --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/hypo-short.fasta.gz >> hypo-short.confusion_matrix
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name NextPolish --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/nextpolish-short.fasta.gz >> nextpolish-short.confusion_matrix
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name ntEdit --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/ntedit-short.fasta.gz >> ntedit-short.confusion_matrix
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name Pilon --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/pilon-short.fasta.gz >> pilon-short.confusion_matrix
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name POLCA --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/polca-short.fasta.gz >> polca-short.confusion_matrix
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name Polypolish --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/polypolish-short.fasta.gz >> polypolish-short.confusion_matrix
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name Racon --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/racon-short.fasta.gz >> racon-short.confusion_matrix
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name wtpoa --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/wtpoa-short.fasta.gz >> wtpoa-short.confusion_matrix
+done
+```
+
+Polypolish only had two false positives in the entire set. They were from NC_002967.9, where the unpolished assembly had a 3-bp deletion in a tandem repeat, and Polypolish erroneously turned it into a 5-bp deletion:
+```
+ reference: GCAAAAGGACTTGACAAAGCCGAAACGCACCTCATAATTTTTAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCGGACAGAGCGGTATAAGCGCGCAATCTGCTCAATGCACCCAGAACACACA
+unpolished: GCAAAAGGACTTGACAAAGCCGAAACGCACCTCATAATTTTTAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAA---GCAAGCAACAAGCAACAAGCAACAAGCAACAAGCGGACAGAGCGGTATAAGCGCGCAATCTGCTCAATGCACCCAGAACACACA
+  polished: GCAAAAGGACTTGACAAAGCCGAAACGCACCTCATAATTTTTAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAAC-----ACAAGCAACAAGCAACAAGCAACAAGCAACAAGCGGACAGAGCGGTATAAGCGCGCAATCTGCTCAATGCACCCAGAACACACA
+```
