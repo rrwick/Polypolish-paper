@@ -54,9 +54,9 @@ pdf.options(useDingbats = FALSE)
 I stored a few paths (specific to my Nectar instance) in Bash variables for use throughout this analysis.
 
 ```{bash eval=FALSE}
-base_dir=/home/ubuntu/hybrid_polishing/simulated_read_tests
-script_dir=/home/ubuntu/hybrid_polishing/scripts
-wrapper_dir=/home/ubuntu/hybrid_polishing/polisher_wrappers
+base_dir=/home/ubuntu/2021-12_Polypolish_paper/simulated_read_tests
+script_dir=/home/ubuntu/2021-12_Polypolish_paper/scripts
+wrapper_dir=/home/ubuntu/2021-12_Polypolish_paper/polisher_wrappers
 ```
 
 
@@ -549,7 +549,7 @@ I left off the `--diamond_db ../uniprot_trembl_2021_03.diamond.dmnd` option for 
 # racon = colour_list[12]
 # wtpoa = colour_list[13]
 
-colour_list <- brewer.pal(n = 8, name = "Set2")
+colour_list <- brewer.pal(n = 9, name = "Set2")
 
 hypo = colour_list[1]
 nextpolish = colour_list[2]
@@ -559,11 +559,15 @@ polca = colour_list[5]
 polypolish = colour_list[6]
 racon = colour_list[7]
 wtpoa = colour_list[8]
+fmlrc2 = colour_list[9]
 
 c = c("unpolished" = "#cccccc",
       "reference" = "#cccccc",
       
       # Single tools:
+      "FMLRC2-short" = fmlrc2, "FMLRC2-short+FMLRC2-short" = fmlrc2, "FMLRC2-short+FMLRC2-short+FMLRC2-short" = fmlrc2,
+      "reference+FMLRC2-short" = fmlrc2,
+
       "HyPo-short" = hypo, "HyPo-short+HyPo-short" = hypo, "HyPo-short+HyPo-short+HyPo-short" = hypo,
       "HyPo-hybrid" = hypo, "HyPo-hybrid+HyPo-hybrid" = hypo, "HyPo-hybrid+HyPo-hybrid+HyPo-hybrid" = hypo,
       "reference+HyPo-short" = hypo, "reference+HyPo-hybrid" = hypo,
@@ -935,6 +939,7 @@ mv *-short.tsv results
 ```{r short_read_single_tool_first_round, fig.width = 7, fig.height = 3, useDingbats = FALSE}
 results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
+                   test_name == "FMLRC2-short" |
                    test_name == "HyPo-short" | 
                    test_name == "NextPolish-short" |
                    test_name == "ntEdit-short" |
@@ -944,6 +949,7 @@ results %>% filter(test_name == "unpolished" |
                    test_name == "Racon-short") -> results
 results$test_name <- factor(results$test_name,
                             levels = c("unpolished",
+                                       "FMLRC2-short",
                                        "HyPo-short",
                                        "NextPolish-short",
                                        "ntEdit-short",
@@ -975,6 +981,7 @@ plot_errors("non_repeat_errors", "Single-tool short-read polishing (non-repeat e
 ```{r short_read_single_tool_third_round, fig.width = 7, fig.height = 3, useDingbats = FALSE}
 results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
+                   test_name == "FMLRC2-short+FMLRC2-short+FMLRC2-short" |
                    test_name == "HyPo-short+HyPo-short+HyPo-short" |
                    test_name == "NextPolish-short+NextPolish-short+NextPolish-short" |
                    test_name == "ntEdit-short+ntEdit-short+ntEdit-short" |
@@ -984,6 +991,7 @@ results %>% filter(test_name == "unpolished" |
                    test_name == "Racon-short+Racon-short+Racon-short") -> results
 results$test_name <- factor(results$test_name,
                             levels = c("unpolished",
+                                       "FMLRC2-short+FMLRC2-short+FMLRC2-short",
                                        "HyPo-short+HyPo-short+HyPo-short",
                                        "NextPolish-short+NextPolish-short+NextPolish-short",
                                        "ntEdit-short+ntEdit-short+ntEdit-short",
@@ -1015,6 +1023,7 @@ plot_errors("non_repeat_errors", "Short-read single-tool polishing (non-repeat e
 
 # totals:
 sum(filter(results, test_name == "unpolished")$overall_errors)
+sum(filter(results, test_name == "FMLRC2-short+FMLRC2-short+FMLRC2-short")$overall_errors)
 sum(filter(results, test_name == "HyPo-short+HyPo-short+HyPo-short")$overall_errors)
 sum(filter(results, test_name == "NextPolish-short+NextPolish-short+NextPolish-short")$overall_errors)
 sum(filter(results, test_name == "ntEdit-short+ntEdit-short+ntEdit-short")$overall_errors)
@@ -1027,6 +1036,7 @@ sum(filter(results, test_name == "Racon-short+Racon-short+Racon-short")$overall_
 ```{r short_read_single_tool_all_rounds, fig.width = 15, fig.height = 6, useDingbats = FALSE}
 results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "unpolished" |
+                   test_name == "FMLRC2-short" | test_name == "FMLRC2-short+FMLRC2-short" | test_name == "FMLRC2-short+FMLRC2-short+FMLRC2-short" | 
                    test_name == "HyPo-short" | test_name == "HyPo-short+HyPo-short" | test_name == "HyPo-short+HyPo-short+HyPo-short" | 
                    test_name == "NextPolish-short" | test_name == "NextPolish-short+NextPolish-short" | test_name == "NextPolish-short+NextPolish-short+NextPolish-short" |
                    test_name == "ntEdit-short" | test_name == "ntEdit-short+ntEdit-short" | test_name == "ntEdit-short+ntEdit-short+ntEdit-short" |
@@ -1037,6 +1047,7 @@ results %>% filter(test_name == "unpolished" |
                    test_name == "wtpoa-short" | test_name == "wtpoa-short+wtpoa-short" | test_name == "wtpoa-short+wtpoa-short+wtpoa-short") -> results
 results$test_name <- factor(results$test_name,
                             levels = c("unpolished",
+                                       "FMLRC2-short", "FMLRC2-short+FMLRC2-short", "FMLRC2-short+FMLRC2-short+FMLRC2-short",
                                        "HyPo-short", "HyPo-short+HyPo-short", "HyPo-short+HyPo-short+HyPo-short",
                                        "NextPolish-short", "NextPolish-short+NextPolish-short", "NextPolish-short+NextPolish-short+NextPolish-short",
                                        "ntEdit-short", "ntEdit-short+ntEdit-short", "ntEdit-short+ntEdit-short+ntEdit-short",
@@ -1107,6 +1118,10 @@ totals_and_means <- function(results, test) {
 }
 
 totals_and_means(results, "unpolished")
+
+totals_and_means(results, "FMLRC2-short")
+totals_and_means(results, "FMLRC2-short+FMLRC2-short")
+totals_and_means(results, "FMLRC2-short+FMLRC2-short+FMLRC2-short")
 
 totals_and_means(results, "HyPo-short")
 totals_and_means(results, "HyPo-short+HyPo-short")
@@ -2020,6 +2035,7 @@ for f in results/reference__*.tsv; do printf $f"\t"; cut -f7 "$f" | grep -cvP "^
 ```{r short_read_single_tool_reference, fig.width = 7, fig.height = 4, useDingbats = FALSE}
 results <- read_delim("../tables/Table_S2_simulated_read_results.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 results %>% filter(test_name == "reference" |
+                   test_name == "reference+FMLRC2-short" |
                    test_name == "reference+HyPo-short" | 
                    test_name == "reference+NextPolish-short" |
                    test_name == "reference+ntEdit-short" |
@@ -2031,6 +2047,7 @@ results %>% filter(test_name == "reference" |
 
 # Add bogus rows so geom_sina doesn't crash with all-zero groups.
 results %>% add_row(genome = "none", test_name = "reference", overall_errors = 10000000, repeat_errors = 10000000, non_repeat_errors = 10000000) -> results
+results %>% add_row(genome = "none", test_name = "reference+FMLRC2-short", overall_errors = 10000000, repeat_errors = 10000000, non_repeat_errors = 10000000) -> results
 results %>% add_row(genome = "none", test_name = "reference+ntEdit-short", overall_errors = 10000000, repeat_errors = 10000000, non_repeat_errors = 10000000) -> results
 results %>% add_row(genome = "none", test_name = "reference+Pilon-short", overall_errors = 10000000, repeat_errors = 10000000, non_repeat_errors = 10000000) -> results
 results %>% add_row(genome = "none", test_name = "reference+POLCA-short", overall_errors = 10000000, repeat_errors = 10000000, non_repeat_errors = 10000000) -> results
@@ -2038,6 +2055,7 @@ results %>% add_row(genome = "none", test_name = "reference+Polypolish-short", o
 
 results$test_name <- factor(results$test_name,
                             levels = c("reference",
+                                       "reference+FMLRC2-short",
                                        "reference+HyPo-short",
                                        "reference+NextPolish-short",
                                        "reference+ntEdit-short",
@@ -2374,4 +2392,58 @@ Polypolish only had two false positives in the entire set. They were from NC_002
  reference: GCAAAAGGACTTGACAAAGCCGAAACGCACCTCATAATTTTTAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCGGACAGAGCGGTATAAGCGCGCAATCTGCTCAATGCACCCAGAACACACA
 unpolished: GCAAAAGGACTTGACAAAGCCGAAACGCACCTCATAATTTTTAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAA---GCAAGCAACAAGCAACAAGCAACAAGCAACAAGCGGACAGAGCGGTATAAGCGCGCAATCTGCTCAATGCACCCAGAACACACA
   polished: GCAAAAGGACTTGACAAAGCCGAAACGCACCTCATAATTTTTAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAACAAGCAAC-----ACAAGCAACAAGCAACAAGCAACAAGCAACAAGCGGACAGAGCGGTATAAGCGCGCAATCTGCTCAATGCACCCAGAACACACA
+```
+
+
+
+
+
+# FMLRC2 v0.1.5
+
+```{bash eval=FALSE}
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    /usr/bin/time -v -o "$a"/fmlrc2-short.time "$wrapper_dir"/fmlrc2-short.sh "$base_dir"/unpolished_genomes/"$a".fasta "$r1" "$r2" "$a"/fmlrc2-short
+    "$wrapper_dir"/fmlrc2-short.sh "$a"/fmlrc2-short.fasta "$r1" "$r2" "$a"/fmlrc2-short__fmlrc2-short
+    "$wrapper_dir"/fmlrc2-short.sh "$a"/fmlrc2-short__fmlrc2-short.fasta "$r1" "$r2" "$a"/fmlrc2-short__fmlrc2-short__fmlrc2-short
+    gzip "$a"/fmlrc2-short*.fasta
+done
+"$script_dir"/time_and_memory.py */fmlrc2-short.time
+```
+
+median time: 0.93 minutes, median memory: 0.60 GB RAM
+
+```{bash eval=FALSE}
+cd "$base_dir"
+for a in $(ls "$base_dir"/reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    "$script_dir"/assess_assembly.py --genome "$a" --name FMLRC2-short -a "$base_dir"/polished_genomes/"$a"/fmlrc2-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> fmlrc2-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name FMLRC2-short+FMLRC2-short -a "$base_dir"/polished_genomes/"$a"/fmlrc2-short__fmlrc2-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> fmlrc2-short__fmlrc2-short.tsv &
+    "$script_dir"/assess_assembly.py --genome "$a" --name FMLRC2-short+FMLRC2-short+FMLRC2-short -a "$base_dir"/polished_genomes/"$a"/fmlrc2-short__fmlrc2-short__fmlrc2-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> fmlrc2-short__fmlrc2-short__fmlrc2-short.tsv &
+    wait
+done
+```
+
+```{bash eval=FALSE}
+cd "$base_dir"/results
+"$script_dir"/confusion_matrix.py --header > fmlrc2-short.confusion_matrix
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    "$script_dir"/confusion_matrix.py --threads 16 --genome "$a" --name HyPo --reference ../reference_genomes/"$a".fasta --unpolished ../unpolished_genomes/"$a".fasta --polished ../polished_genomes/"$a"/fmlrc2-short.fasta.gz >> fmlrc2-short.confusion_matrix
+done
+```
+
+```{bash eval=FALSE}
+cd "$base_dir"/polished_genomes
+for a in $(ls ../reference_genomes/*.fasta | grep -oP "NC_\d{6}\.\d"); do
+    cd "$base_dir"/polished_genomes
+    r1=../reads/"$a"_1.fastq.gz
+    r2=../reads/"$a"_2.fastq.gz
+    "$wrapper_dir"/fmlrc2-short.sh "$base_dir"/reference_genomes/"$a".fasta "$r1" "$r2" "$a"/reference__fmlrc2-short
+    gzip "$a"/*.fasta
+    cd "$base_dir"
+    "$script_dir"/assess_assembly.py --genome "$a" --name reference+FMLRC2-short -a "$base_dir"/polished_genomes/"$a"/reference__fmlrc2-short.fasta.gz -r reference_genomes/"$a".fasta --repeats reference_genomes/"$a".repeats -1 reads/"$a"_1.fastq.gz -2 reads/"$a"_2.fastq.gz >> reference__fmlrc2-short.tsv &
+done
+
+for f in results/reference__*.tsv; do printf $f"\t"; cut -f7 "$f" | grep -cvP "^0$"; done
 ```

@@ -39,9 +39,9 @@ pdf.options(useDingbats = FALSE)
 
 I stored a few paths (specific to my Nectar instance) in Bash variables for use throughout this analysis.
 ```{bash eval=FALSE}
-base_dir=/home/ubuntu/hybrid_polishing/real_read_tests
-script_dir=/home/ubuntu/hybrid_polishing/scripts
-wrapper_dir=/home/ubuntu/hybrid_polishing/polisher_wrappers
+base_dir=/home/ubuntu/2021-12_Polypolish_paper/real_read_tests
+script_dir=/home/ubuntu/2021-12_Polypolish_paper/scripts
+wrapper_dir=/home/ubuntu/2021-12_Polypolish_paper/polisher_wrappers
 ```
 
 
@@ -68,7 +68,7 @@ wrapper_dir=/home/ubuntu/hybrid_polishing/polisher_wrappers
 # racon = colour_list[12]
 # wtpoa = colour_list[13]
 
-colour_list <- brewer.pal(n = 8, name = "Set2")
+colour_list <- brewer.pal(n = 9, name = "Set2")
 
 hypo = colour_list[1]
 nextpolish = colour_list[2]
@@ -78,11 +78,16 @@ polca = colour_list[5]
 polypolish = colour_list[6]
 racon = colour_list[7]
 wtpoa = colour_list[8]
+fmlrc2 = colour_list[9]
 
 c = c("Trycycler" = "#cccccc",
       
       "Trycycler+Medaka-long" = "#cccccc",
       
+      "Trycycler+Medaka-long+FMLRC2-short" = fmlrc2,
+      "Trycycler+Medaka-long+FMLRC2-short+FMLRC2-short" = fmlrc2,
+      "Trycycler+Medaka-long+FMLRC2-short+FMLRC2-short+FMLRC2-short" = fmlrc2,
+
       "Trycycler+Medaka-long+HyPo-short" = hypo,
       "Trycycler+Medaka-long+HyPo-short+HyPo-short" = hypo,
       "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" = hypo,
@@ -746,10 +751,11 @@ ggplot(results, aes(x=Polishing, y=`Total distance`, colour=Polishing, shape=Iso
   labs(title = "Real read single-tool polishing (sum of pairwise distances)", x = NULL, y = "Errors")
 ```
 
-```{r short_read_single_tool_third_round, fig.width = 7.5, fig.height = 3, useDingbats = FALSE}
+```{r short_read_single_tool_third_round, fig.width = 8.5, fig.height = 3, useDingbats = FALSE}
 results <- read_excel("../tables/Table_S5_real_read_results.xlsx", sheet = "Results", col_names = TRUE)
 
 filter(results, Polishing == "Trycycler+Medaka-long" |
+                Polishing == "Trycycler+Medaka-long+FMLRC2-short+FMLRC2-short+FMLRC2-short" |
                 Polishing == "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short" |
                 Polishing == "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short" |
                 Polishing == "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short" |
@@ -759,6 +765,7 @@ filter(results, Polishing == "Trycycler+Medaka-long" |
                 Polishing == "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short") -> results
 results$Polishing <- factor(results$Polishing,
                             levels = c("Trycycler+Medaka-long",
+                                       "Trycycler+Medaka-long+FMLRC2-short+FMLRC2-short+FMLRC2-short",
                                        "Trycycler+Medaka-long+HyPo-short+HyPo-short+HyPo-short",
                                        "Trycycler+Medaka-long+NextPolish-short+NextPolish-short+NextPolish-short",
                                        "Trycycler+Medaka-long+ntEdit-short+ntEdit-short+ntEdit-short",
@@ -767,6 +774,7 @@ results$Polishing <- factor(results$Polishing,
                                        "Trycycler+Medaka-long+Polypolish-short+Polypolish-short+Polypolish-short",
                                        "Trycycler+Medaka-long+Racon-short+Racon-short+Racon-short"))
 display_names <- c("unpolished",
+                   "FMLRC2\n×3",
                    "HyPo\n×3",
                    "NextPolish\n×3",
                    "ntEdit\n×3",
@@ -1185,5 +1193,52 @@ for a in trycycler__medaka-long__nextpolish-short__hypo-short trycycler__medaka-
             fast_count "$a".fasta | cut -f6
         done
     done
+done
+```
+
+
+
+
+
+# FMLRC2 v0.1.5
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9/a Acinetobacter_baumannii_J9/b Acinetobacter_baumannii_J9/c Acinetobacter_baumannii_J9/d Citrobacter_koseri_MINF_9D/a Citrobacter_koseri_MINF_9D/b Citrobacter_koseri_MINF_9D/c Citrobacter_koseri_MINF_9D/d Enterobacter_kobei_MSB1_1B/a Enterobacter_kobei_MSB1_1B/b Enterobacter_kobei_MSB1_1B/c Enterobacter_kobei_MSB1_1B/d Haemophilus_M1C132_1/a Haemophilus_M1C132_1/b Haemophilus_M1C132_1/c Haemophilus_M1C132_1/d Klebsiella_oxytoca_MSB1_2C/a Klebsiella_oxytoca_MSB1_2C/b Klebsiella_oxytoca_MSB1_2C/c Klebsiella_oxytoca_MSB1_2C/d Klebsiella_variicola_INF345/a Klebsiella_variicola_INF345/b Klebsiella_variicola_INF345/c Klebsiella_variicola_INF345/d; do
+    cd "$base_dir"/"$i"
+    r1=reads/illumina_1.fastq.gz
+    r2=reads/illumina_2.fastq.gz
+    "$wrapper_dir"/fmlrc2-short.sh trycycler__medaka-long.fasta "$r1" "$r2" trycycler__medaka-long__fmlrc2-short
+    "$wrapper_dir"/fmlrc2-short.sh trycycler__medaka-long__fmlrc2-short.fasta "$r1" "$r2" trycycler__medaka-long__fmlrc2-short__fmlrc2-short
+    "$wrapper_dir"/fmlrc2-short.sh trycycler__medaka-long__fmlrc2-short__fmlrc2-short.fasta "$r1" "$r2" trycycler__medaka-long__fmlrc2-short__fmlrc2-short__fmlrc2-short
+done
+```
+
+```{bash eval=FALSE}
+for p in trycycler__medaka-long__fmlrc2-short trycycler__medaka-long__fmlrc2-short__fmlrc2-short trycycler__medaka-long__fmlrc2-short__fmlrc2-short__fmlrc2-short; do
+    for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+        cd "$base_dir"/"$i"
+        printf $i"\t"$p"\t"
+        "$script_dir"/pairwise_distances.py a/"$p".fasta b/"$p".fasta c/"$p".fasta d/"$p".fasta > "$p".phylip
+    done
+done
+```
+
+```{bash eval=FALSE}
+for i in Acinetobacter_baumannii_J9 Citrobacter_koseri_MINF_9D Enterobacter_kobei_MSB1_1B Haemophilus_M1C132_1 Klebsiella_oxytoca_MSB1_2C Klebsiella_variicola_INF345; do
+    for s in a b c d; do
+        cd "$base_dir"/"$i"/"$s"
+        r1=reads/illumina_1.fastq.gz
+        r2=reads/illumina_2.fastq.gz
+        for a in trycycler__medaka-long__fmlrc2-short trycycler__medaka-long__fmlrc2-short__fmlrc2-short trycycler__medaka-long__fmlrc2-short__fmlrc2-short__fmlrc2-short; do
+            "$wrapper_dir"/ale.sh "$a".fasta "$r1" "$r2" "$a"
+        done
+    done
+done
+
+# Reduce the size of the ALE output files:
+cd "$base_dir"
+for a in */*/*.ale; do
+    grep -P "^#" "$a" > temp
+    mv temp "$a"
 done
 ```
