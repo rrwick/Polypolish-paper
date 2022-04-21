@@ -1,6 +1,6 @@
 <p align="center"><img src="https://github.com/rrwick/Polypolish/blob/main/images/logo_transparent.png" alt="Polypolish" width="70%"></p>
 
-This repo contains supplementary data for our paper describing Polypolish: [Wick RR, Holt KE. Polypolish: short-read polishing of long-read bacterial genome assemblies. bioRxiv. 2021. doi:10.1101/2021.10.14.464465.](https://doi.org/10.1101/2021.10.14.464465)
+This repo contains supplementary data for our paper describing Polypolish: [Wick RR, Holt KE. Polypolish: short-read polishing of long-read bacterial genome assemblies. PLOS Computational Biology. 2022. doi:10.1371/journal.pcbi.1009802.](https://doi.org/10.1371/journal.pcbi.1009802)
 
 If you're interested in Polypolish itself (i.e. not the paper), then head over to [its GitHub repo](https://github.com/rrwick/Polypolish).
 
